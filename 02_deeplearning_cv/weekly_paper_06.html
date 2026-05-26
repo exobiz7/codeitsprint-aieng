@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekly Paper · CNN과 오토인코더</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <style>
+    :root {
+      --bg: #0d0f12;
+      --bg-soft: #15181d;
+      --bg-card: #171b21;
+      --line: #262b33;
+      --line-soft: #1f242b;
+      --ink: #e8eaed;
+      --ink-mute: #a3a9b3;
+      --ink-faint: #6c727c;
+      --amber: #f0b429;
+      --amber-soft: #ffd666;
+      --teal: #4fd1c5;
+      --rose: #f08a8a;
+      --violet: #a78bfa;
+      --code-bg: #10131a;
+      --mono: 'SFMono-Regular', ui-monospace, 'JetBrains Mono', 'Menlo', monospace;
+      --sans: 'Pretendard', 'Pretendard Variable', -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background:
+        radial-gradient(900px 500px at 85% -5%, rgba(240, 180, 41, 0.07), transparent 60%),
+        radial-gradient(700px 600px at -5% 100%, rgba(79, 209, 197, 0.05), transparent 55%),
+        var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+      font-size: 16.5px;
+      letter-spacing: -0.01em;
+      -webkit-font-smoothing: antialiased;
+      padding: 0 20px 120px;
+    }
+
+    .wrap { max-width: 820px; margin: 0 auto; }
+
+    /* ---------- HEADER ---------- */
+    header { padding: 84px 0 48px; border-bottom: 1px solid var(--line); }
+
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 9px;
+      font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--amber);
+      padding: 6px 13px; border: 1px solid rgba(240,180,41,0.3);
+      border-radius: 999px; background: rgba(240,180,41,0.05);
+    }
+    .eyebrow::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--amber); box-shadow: 0 0 10px var(--amber);
+    }
+
+    h1 {
+      font-size: clamp(30px, 5.5vw, 46px); line-height: 1.18;
+      font-weight: 800; letter-spacing: -0.03em; margin: 26px 0 18px;
+    }
+    h1 .accent { color: var(--amber); }
+
+    .lede { font-size: 17px; color: var(--ink-mute); max-width: 62ch; }
+
+    .meta {
+      display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 30px;
+      font-family: var(--mono); font-size: 12.5px; color: var(--ink-faint);
+    }
+    .meta span { display: inline-flex; align-items: center; gap: 7px; }
+    .meta b { color: var(--ink-mute); font-weight: 500; }
+
+    /* ---------- HOW TO USE ---------- */
+    .howto {
+      margin: 36px 0 8px; padding: 20px 24px; border-radius: 14px;
+      background: var(--bg-soft); border: 1px solid var(--line-soft);
+      font-size: 14.5px; color: var(--ink-mute);
+    }
+    .howto b { color: var(--amber-soft); }
+
+    /* ---------- TOC ---------- */
+    nav.toc { margin: 40px 0 8px; }
+    nav.toc ol { list-style: none; counter-reset: toc; display: grid; gap: 10px; }
+    nav.toc li { counter-increment: toc; }
+    nav.toc a {
+      display: flex; align-items: baseline; gap: 16px; text-decoration: none;
+      color: var(--ink-mute); padding: 14px 18px; border-radius: 12px;
+      border: 1px solid var(--line-soft); background: var(--bg-card); transition: .18s ease;
+    }
+    nav.toc a:hover { border-color: rgba(240,180,41,0.4); color: var(--ink); transform: translateX(4px); }
+    nav.toc a::before {
+      content: "Q" counter(toc); font-family: var(--mono); font-size: 13px;
+      color: var(--amber); font-weight: 600; flex-shrink: 0;
+    }
+
+    /* ---------- SECTIONS ---------- */
+    section { padding-top: 74px; }
+
+    .qtag {
+      font-family: var(--mono); font-size: 12.5px; color: var(--amber);
+      letter-spacing: 0.14em; text-transform: uppercase;
+    }
+
+    h2 {
+      font-size: clamp(22px, 3.6vw, 28px); font-weight: 800; line-height: 1.34;
+      letter-spacing: -0.025em; margin: 10px 0 26px; padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h3 {
+      font-size: 18px; font-weight: 700; margin: 36px 0 12px;
+      display: flex; align-items: center; gap: 10px; letter-spacing: -0.02em;
+    }
+    h3::before {
+      content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--amber);
+    }
+
+    p { margin: 14px 0; color: var(--ink); }
+    p.mute { color: var(--ink-mute); }
+
+    strong { color: var(--amber-soft); font-weight: 700; }
+    em { color: var(--teal); font-style: normal; font-weight: 600; }
+
+    code {
+      font-family: var(--mono); font-size: 0.86em; background: var(--code-bg);
+      border: 1px solid var(--line-soft); padding: 2px 6px; border-radius: 5px; color: var(--teal);
+    }
+
+    ul.bullets { list-style: none; margin: 14px 0; display: grid; gap: 11px; }
+    ul.bullets li { position: relative; padding-left: 24px; color: var(--ink); }
+    ul.bullets li::before {
+      content: ""; position: absolute; left: 4px; top: 11px;
+      width: 7px; height: 7px; border-radius: 50%; border: 2px solid var(--amber);
+    }
+    ul.bullets li b { color: var(--amber-soft); }
+
+    /* ---------- TL;DR ---------- */
+    .tldr {
+      margin: 6px 0 8px; padding: 18px 22px; border-radius: 13px;
+      background: linear-gradient(135deg, rgba(240,180,41,0.09), rgba(240,180,41,0.02));
+      border: 1px solid rgba(240,180,41,0.22); border-left: 3px solid var(--amber);
+    }
+    .tldr .lbl {
+      font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em;
+      color: var(--amber); text-transform: uppercase;
+    }
+    .tldr p { margin: 7px 0 0; font-size: 16px; font-weight: 500; }
+
+    /* ---------- TABLE ---------- */
+    .tbl-scroll {
+      overflow-x: auto; margin: 18px 0; border-radius: 12px; border: 1px solid var(--line);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 480px; }
+    th, td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+    thead th { background: var(--bg-soft); color: var(--amber-soft); font-weight: 700; font-size: 13px; letter-spacing: 0.02em; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.015); }
+    td:first-child { color: var(--ink-mute); font-weight: 600; white-space: nowrap; }
+
+    /* ---------- CNN LAYER PIPELINE ---------- */
+    .pipeline {
+      margin: 24px 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .pipe-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--line-soft);
+      position: relative;
+    }
+
+    .pipe-step::after {
+      content: "↓";
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--ink-faint);
+      font-size: 14px;
+      z-index: 1;
+    }
+
+    .pipe-step:last-child::after { display: none; }
+
+    .pipe-badge {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .badge-conv  { background: rgba(240,180,41,0.12); color: var(--amber); border: 1px solid rgba(240,180,41,0.3); }
+    .badge-act   { background: rgba(240,138,138,0.1); color: var(--rose); border: 1px solid rgba(240,138,138,0.25); }
+    .badge-pool  { background: rgba(79,209,197,0.09); color: var(--teal); border: 1px solid rgba(79,209,197,0.22); }
+    .badge-norm  { background: rgba(167,139,250,0.09); color: var(--violet); border: 1px solid rgba(167,139,250,0.22); }
+    .badge-flat  { background: rgba(255,214,102,0.08); color: var(--amber-soft); border: 1px solid rgba(255,214,102,0.2); }
+    .badge-fc    { background: rgba(240,180,41,0.12); color: var(--amber); border: 1px solid rgba(240,180,41,0.3); }
+    .badge-drop  { background: rgba(240,138,138,0.1); color: var(--rose); border: 1px solid rgba(240,138,138,0.25); }
+
+    .pipe-content { flex: 1; }
+    .pipe-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+    .pipe-desc { font-size: 14px; color: var(--ink-mute); line-height: 1.65; }
+    .pipe-desc strong { color: var(--amber-soft); font-weight: 600; }
+    .pipe-desc em { color: var(--teal); }
+
+    /* ---------- AUTOENCODER DIAGRAM ---------- */
+    .ae-diagram {
+      margin: 22px 0;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0;
+      align-items: stretch;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .ae-panel {
+      padding: 22px 20px;
+    }
+
+    .ae-encoder { background: linear-gradient(160deg, rgba(240,180,41,0.08), rgba(240,180,41,0.02)); border-right: 1px solid var(--line); }
+    .ae-decoder { background: linear-gradient(200deg, rgba(79,209,197,0.07), rgba(79,209,197,0.01)); border-left: 1px solid var(--line); }
+    .ae-bottleneck {
+      background: var(--bg-soft);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 14px;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      min-width: 90px;
+    }
+
+    .ae-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .ae-encoder .ae-label { color: var(--amber); }
+    .ae-decoder .ae-label { color: var(--teal); }
+    .ae-bottleneck .ae-label { color: var(--violet); text-align: center; }
+
+    .ae-panel h4 { font-size: 15px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.01em; }
+    .ae-panel ul { list-style: none; display: grid; gap: 7px; }
+    .ae-panel ul li {
+      font-size: 13.5px;
+      color: var(--ink-mute);
+      padding-left: 16px;
+      position: relative;
+      line-height: 1.55;
+    }
+    .ae-panel ul li::before {
+      content: "·";
+      position: absolute;
+      left: 4px;
+      color: var(--ink-faint);
+    }
+
+    .ae-bottleneck .bn-icon {
+      font-size: 22px;
+      margin: 4px 0 8px;
+    }
+    .ae-bottleneck .bn-text {
+      font-size: 12px;
+      color: var(--ink-mute);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ---------- USE-CASE CARDS ---------- */
+    .usecase-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 580px) {
+      .usecase-grid { grid-template-columns: 1fr; }
+      .ae-diagram { grid-template-columns: 1fr; }
+      .ae-encoder { border-right: none; border-bottom: 1px solid var(--line); }
+      .ae-decoder { border-left: none; border-top: 1px solid var(--line); }
+      .ae-bottleneck { min-width: unset; border: none; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px; }
+    }
+
+    .usecase-card {
+      padding: 16px 18px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--line-soft);
+    }
+
+    .usecase-card .uc-tag {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 6px;
+    }
+
+    .usecase-card .uc-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--amber-soft);
+      margin-bottom: 6px;
+    }
+
+    .usecase-card .uc-desc {
+      font-size: 13.5px;
+      color: var(--ink-mute);
+      line-height: 1.6;
+    }
+
+    /* ---------- COMPARE SPLIT ---------- */
+    .compare-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 520px) { .compare-split { grid-template-columns: 1fr; } }
+
+    .compare-card {
+      padding: 18px 20px;
+      border-radius: 12px;
+      background: var(--bg-card);
+    }
+    .compare-card.left  { border: 1px solid rgba(240,180,41,0.28); border-top: 3px solid var(--amber); }
+    .compare-card.right { border: 1px solid rgba(79,209,197,0.25); border-top: 3px solid var(--teal); }
+
+    .compare-card .cc-label {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+      text-transform: uppercase; margin-bottom: 8px;
+    }
+    .compare-card.left  .cc-label { color: var(--amber); }
+    .compare-card.right .cc-label { color: var(--teal); }
+
+    .compare-card .cc-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .compare-card ul { list-style: none; display: grid; gap: 8px; }
+    .compare-card ul li { font-size: 14px; color: var(--ink-mute); padding-left: 18px; position: relative; line-height: 1.6; }
+    .compare-card ul li::before { content: "→"; position: absolute; left: 0; color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
+
+    /* ---------- FORMULA ---------- */
+    .formula {
+      margin: 18px 0; padding: 18px 24px; background: var(--code-bg);
+      border: 1px solid var(--line); border-radius: 12px;
+      font-family: var(--mono); font-size: 14.5px; color: var(--amber-soft);
+      text-align: center; letter-spacing: 0.04em; line-height: 2;
+    }
+    .formula .sub {
+      display: block; font-size: 12px; color: var(--ink-faint); margin-top: 6px; letter-spacing: 0.02em;
+    }
+
+    /* ---------- INTERVIEW CALLOUT ---------- */
+    .interview {
+      margin: 24px 0; padding: 20px 22px 18px; border-radius: 13px;
+      background: var(--bg-card); border: 1px solid var(--line);
+      border-top: 3px solid var(--teal); position: relative;
+    }
+    .interview .head {
+      display: flex; align-items: center; gap: 9px; margin-bottom: 10px;
+      font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--teal); font-weight: 600;
+    }
+    .interview .head svg { width: 15px; height: 15px; }
+    .interview p { margin: 9px 0; font-size: 15px; color: var(--ink-mute); }
+    .interview p:first-of-type { margin-top: 0; }
+    .interview .q { color: var(--ink); font-weight: 600; }
+    .interview .q::before { content: "Q. "; color: var(--teal); font-family: var(--mono); }
+
+    /* ---------- FOOTER ---------- */
+    footer {
+      margin-top: 90px; padding-top: 34px; border-top: 1px solid var(--line);
+      font-size: 13.5px; color: var(--ink-faint); text-align: center; line-height: 1.9;
+    }
+    footer b { color: var(--ink-mute); }
+    .top-link {
+      display: inline-block; margin-top: 14px; color: var(--amber);
+      text-decoration: none; font-family: var(--mono); font-size: 12.5px;
+    }
+    .top-link:hover { text-decoration: underline; }
+
+    @media (max-width:560px) {
+      body { font-size: 16px; padding: 0 16px 90px; }
+      header { padding: 56px 0 38px; }
+      section { padding-top: 60px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <header id="top">
+      <span class="eyebrow">Weekly Paper · Week 06</span>
+      <h1>CNN &amp; 오토인코더<br><span class="accent">구조와 원리</span> 파헤치기</h1>
+      <p class="lede">컨볼루션 신경망의 각 레이어가 이미지를 어떻게 이해하는지, 오토인코더가 어떤 문제를 풀고 인코더·디코더가 각각 무슨 역할을 하는지를 <em>왜 그런지</em>까지 이해하는 걸 목표로 정리했습니다.</p>
+      <div class="meta">
+        <span><b>주제</b> · CNN 레이어 구조, 오토인코더 원리</span>
+        <span><b>대상</b> · 팀 공유용 / 면접 대비</span>
+        <span><b>난이도</b> · ★★★☆☆</span>
+      </div>
+    </header>
+
+    <div class="howto">
+      📌 <b>이렇게 활용하세요.</b> 각 문항은 <b>한 줄 요약 → 친절한 설명 → 면접 포인트</b> 순서로 구성했습니다. 시간 없을 땐 노란 박스(한 줄 요약)와 청록 박스(면접 포인트)만 읽어도 핵심은 잡혀요. 면접 직전 복습용으로 딱 좋습니다.
+    </div>
+
+    <nav class="toc">
+      <ol>
+        <li><a href="#q1">CNN을 구성하는 각 레이어의 역할</a></li>
+        <li><a href="#q2">오토인코더 — 적합한 상황, 인코더와 디코더의 개념과 차이</a></li>
+      </ol>
+    </nav>
+
+    <!-- ===================== Q1 ===================== -->
+    <section id="q1">
+      <span class="qtag">Question 01</span>
+      <h2>CNN을 구성하는 각 레이어의 역할에 대해 설명해보세요</h2>
+
+      <div class="tldr">
+        <span class="lbl">한 줄 요약</span>
+        <p>CNN은 <em>Convolution → Activation → Pooling</em>을 반복해 이미지의 특징을 점점 추상화하고, 마지막에 <em>Flatten → Fully Connected</em>로 최종 예측을 만드는 구조입니다.</p>
+      </div>
+
+      <h3>왜 CNN인가? — 일반 신경망의 한계</h3>
+      <p>28×28짜리 작은 이미지도 픽셀을 일렬로 펼치면 784개의 입력이 됩니다. 여기에 Fully Connected 레이어를 바로 적용하면 파라미터 수가 폭발적으로 늘어나고, <strong>이미지의 공간 정보(위치 관계, 지역 패턴)를 완전히 잃어버립니다.</strong> CNN은 이 문제를 <em>지역 수용 영역(local receptive field)</em>과 <em>파라미터 공유(parameter sharing)</em>로 해결합니다.</p>
+
+      <h3>레이어별 흐름</h3>
+      <p class="mute">아래 파이프라인은 실제 CNN 순전파(Forward Pass)의 전형적인 흐름입니다. 각 레이어가 무엇을 입력받고 무엇을 출력하는지 함께 읽어보세요.</p>
+
+      <div class="pipeline">
+
+        <div class="pipe-step">
+          <div class="pipe-badge badge-conv">Conv</div>
+          <div class="pipe-content">
+            <div class="pipe-title">합성곱 레이어 (Convolutional Layer)</div>
+            <div class="pipe-desc">
+              핵심 레이어입니다. 작은 <strong>필터(커널)</strong>를 이미지 위로 슬라이딩하며 내적(element-wise 곱의 합)을 계산해 <em>특징 맵(Feature Map)</em>을 생성합니다. 하나의 필터는 "이 위치에 특정 패턴이 있는가?"를 감지하는 탐지기 역할을 합니다. 여러 필터를 사용하면 여러 종류의 패턴을 동시에 탐지할 수 있어요. 파라미터는 필터 가중치만이므로 Fully Connected 대비 극적으로 적습니다.
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-step">
+          <div class="pipe-badge badge-act">Act</div>
+          <div class="pipe-content">
+            <div class="pipe-title">활성화 함수 (Activation Function) — 주로 ReLU</div>
+            <div class="pipe-desc">
+              Convolution의 결과(선형 변환)에 <em>비선형성</em>을 부여합니다. <strong>ReLU</strong>(<code>max(0, x)</code>)가 사실상 표준입니다. 음수는 0으로 만들고 양수는 그대로 통과시켜, 네트워크가 복잡한 비선형 패턴을 학습할 수 있게 합니다. Sigmoid보다 기울기 소실(Vanishing Gradient) 문제가 훨씬 적어 깊은 망에 적합합니다.
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-step">
+          <div class="pipe-badge badge-pool">Pool</div>
+          <div class="pipe-content">
+            <div class="pipe-title">풀링 레이어 (Pooling Layer) — 주로 Max Pooling</div>
+            <div class="pipe-desc">
+              특징 맵의 크기를 줄여 <strong>계산량을 낮추고 주요 특징만 남기는</strong> 다운샘플링 레이어입니다. <em>Max Pooling</em>은 지정된 영역에서 최댓값만 취합니다. 이 과정에서 특징의 위치가 약간 변해도 탐지가 유지되는 <strong>위치 불변성(Translation Invariance)</strong>을 얻습니다. "고양이 귀가 사진 왼쪽에 있든 오른쪽에 있든 귀로 인식"하게 해주는 원리가 이것입니다.
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-step">
+          <div class="pipe-badge badge-norm">Norm</div>
+          <div class="pipe-content">
+            <div class="pipe-title">배치 정규화 (Batch Normalization) — 선택적</div>
+            <div class="pipe-desc">
+              레이어 출력을 미니배치 단위로 정규화해 <em>학습을 안정화</em>하고 더 높은 학습률을 사용할 수 있게 합니다. 내부 공변량 이동(Internal Covariate Shift)을 줄여 깊은 망에서의 수렴 속도를 높이고, 과적합을 억제하는 정규화 효과도 있습니다.
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-step">
+          <div class="pipe-badge badge-flat">Flat</div>
+          <div class="pipe-content">
+            <div class="pipe-title">플래튼 (Flatten)</div>
+            <div class="pipe-desc">
+              3차원 특징 맵(높이 × 너비 × 채널)을 <strong>1차원 벡터로 펼칩니다.</strong> Convolutional 블록과 Fully Connected 레이어를 연결하는 다리 역할입니다. 연산 자체는 없고 형태(shape)만 변환합니다.
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-step">
+          <div class="pipe-badge badge-drop">Drop</div>
+          <div class="pipe-content">
+            <div class="pipe-title">드롭아웃 (Dropout) — 선택적, 주로 FC 앞뒤</div>
+            <div class="pipe-desc">
+              학습 중 무작위로 일정 비율의 뉴런을 비활성화해 <em>과적합을 방지</em>합니다. 추론(Inference) 시에는 모든 뉴런을 사용합니다. 모든 뉴런이 독립적으로 특징을 학습하도록 강제하는 일종의 앙상블 효과를 냅니다.
+            </div>
+          </div>
+        </div>
+
+        <div class="pipe-step">
+          <div class="pipe-badge badge-fc">FC</div>
+          <div class="pipe-content">
+            <div class="pipe-title">완전 연결 레이어 (Fully Connected Layer)</div>
+            <div class="pipe-desc">
+              Flatten된 벡터를 입력받아 <strong>최종 예측을 수행</strong>합니다. Conv 블록이 "특징을 추출"한다면, FC 레이어는 그 특징들을 종합해 "이 특징 조합이 어떤 클래스인가"를 판단합니다. 마지막 FC 레이어의 출력 수는 클래스 수와 같고, Softmax를 통해 확률로 변환합니다.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <h3>깊어질수록 추상화된다 — 계층적 특징 학습</h3>
+      <p>CNN의 핵심 원리는 <strong>계층적 특징 학습</strong>입니다. 얕은 레이어(초기)는 선·모서리·색상 같은 저수준 특징을 감지하고, 깊어질수록 눈·코·귀 같은 부품, 더 깊어지면 "얼굴" "자동차" 같은 고수준 개념을 인식합니다.</p>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>레이어</th>
+              <th>주요 역할</th>
+              <th>핵심 파라미터</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Convolution</td>
+              <td>필터로 지역 특징 탐지 → 특징 맵 생성</td>
+              <td>필터 크기, 필터 수, Stride, Padding</td>
+            </tr>
+            <tr>
+              <td>Activation (ReLU)</td>
+              <td>비선형성 부여, 기울기 소실 완화</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Pooling</td>
+              <td>다운샘플링, 위치 불변성, 계산량 감소</td>
+              <td>풀 크기, Stride</td>
+            </tr>
+            <tr>
+              <td>Batch Norm</td>
+              <td>학습 안정화, 수렴 속도 향상</td>
+              <td>γ, β (학습 가능)</td>
+            </tr>
+            <tr>
+              <td>Flatten</td>
+              <td>3D → 1D 형태 변환 (연산 없음)</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Dropout</td>
+              <td>과적합 방지, 앙상블 효과</td>
+              <td>드롭 비율 p</td>
+            </tr>
+            <tr>
+              <td>Fully Connected</td>
+              <td>특징 종합 → 최종 클래스 예측</td>
+              <td>출력 뉴런 수, 활성화 함수</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="interview">
+        <div class="head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z" />
+            <path d="M9 21h6" />
+          </svg>
+          면접 포인트
+        </div>
+        <p class="q">CNN이 일반 Fully Connected보다 이미지에 적합한 이유는?</p>
+        <p>→ 두 가지로 답하세요. ① 파라미터 공유(필터 가중치를 전체 이미지에 공유)로 파라미터 수를 극적으로 줄이고, ② 지역 연결성(local connectivity)으로 공간 정보를 보존합니다. FC는 모든 픽셀이 모든 뉴런에 연결되어 공간 구조를 무시합니다.</p>
+        <p class="q">Max Pooling과 Average Pooling의 차이는?</p>
+        <p>→ Max Pooling은 해당 영역에서 가장 강한 특징(최댓값)을 취하고, Average Pooling은 평균을 취합니다. 일반적으로 Max Pooling이 특징의 존재 여부를 감지하는 데 더 유리해 더 자주 쓰입니다.</p>
+        <p class="q">Stride와 Padding은 무엇인가요?</p>
+        <p>→ Stride는 필터가 한 번에 이동하는 칸 수입니다. Stride가 크면 출력 특징 맵이 작아집니다. Padding은 입력 가장자리에 0을 추가해 특징 맵의 크기를 유지('same')하거나 줄어들지 않게 하는 기법입니다. 가장자리 픽셀이 무시되지 않게 보호하는 역할도 합니다.</p>
+      </div>
+    </section>
+
+    <!-- ===================== Q2 ===================== -->
+    <section id="q2">
+      <span class="qtag">Question 02</span>
+      <h2>오토인코더가 적합한 상황과 인코더·디코더의 개념 및 차이점</h2>
+
+      <div class="tldr">
+        <span class="lbl">한 줄 요약</span>
+        <p>오토인코더는 <em>입력을 압축(인코더)했다가 복원(디코더)하는</em> 비지도 학습 모델입니다. 레이블 없이 데이터의 핵심 표현을 학습하며, 이상 탐지·차원 축소·노이즈 제거에 특히 강합니다.</p>
+      </div>
+
+      <h3>오토인코더란?</h3>
+      <p>오토인코더(Autoencoder)는 <strong>입력을 그대로 출력으로 재구성하는</strong> 신경망입니다. 단순히 복사하는 게 아니라, 중간에 <em>병목(Bottleneck)</em>을 두어 입력을 저차원 잠재 공간(Latent Space)으로 압축했다가 다시 복원하는 과정에서 데이터의 핵심 구조를 학습합니다.</p>
+
+      <div class="formula">
+        Input X → Encoder → z (Latent Code) → Decoder → X̂ (Reconstruction)
+        <span class="sub">손실 함수: L = ‖X − X̂‖²   (입력과 복원 결과의 차이를 최소화)</span>
+      </div>
+
+      <h3>구조 한눈에 보기</h3>
+
+      <div class="ae-diagram">
+        <div class="ae-panel ae-encoder">
+          <div class="ae-label">Encoder</div>
+          <h4>인코더</h4>
+          <ul>
+            <li>고차원 입력을 저차원 잠재 표현 <code>z</code>로 압축</li>
+            <li>Conv / Dense 레이어를 거치며 점점 작아지는 구조</li>
+            <li>"중요한 것만 남기는" 압축기 역할</li>
+            <li>출력: 잠재 벡터 <code>z</code> (Latent Code)</li>
+          </ul>
+        </div>
+        <div class="ae-bottleneck">
+          <div class="ae-label">Latent<br>Space</div>
+          <div class="bn-icon">⬡</div>
+          <div class="bn-text">병목<br>(Bottleneck)<br><br>가장 작은 차원<br>핵심 표현만 남음</div>
+        </div>
+        <div class="ae-panel ae-decoder">
+          <div class="ae-label">Decoder</div>
+          <h4>디코더</h4>
+          <ul>
+            <li>잠재 벡터 <code>z</code>를 원래 차원으로 복원</li>
+            <li>인코더와 대칭되는 구조 (점점 커짐)</li>
+            <li>"압축에서 복원하는" 생성기 역할</li>
+            <li>출력: 재구성된 입력 <code>X̂</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>인코더(Encoder) — 압축과 추상화</h3>
+      <p>인코더는 고차원 입력 데이터를 <strong>저차원 잠재 벡터 <code>z</code>로 매핑</strong>하는 함수입니다. 입력의 모든 정보를 그대로 담을 수 없는 병목 구조 덕분에 모델이 "덜 중요한 세부 사항을 버리고 본질적인 특징만 보존"하도록 강제됩니다. 이미지라면 픽셀 하나하나가 아니라 "이 이미지가 어떤 모양인지"의 추상적 표현이 <code>z</code>에 담기는 셈입니다.</p>
+
+      <h3>디코더(Decoder) — 복원과 생성</h3>
+      <p>디코더는 잠재 벡터 <code>z</code>를 입력받아 <strong>원래 차원의 데이터로 복원</strong>하는 함수입니다. 인코더와 대칭적인 구조를 가지며, 보통 역합성곱(Transposed Convolution)이나 업샘플링을 사용합니다. 학습이 잘 된 디코더는 잠재 공간에서 새로운 <code>z</code>를 입력받아 <em>새로운 데이터를 생성</em>하는 것도 가능합니다 (VAE의 원리).</p>
+
+      <h3>인코더 vs 디코더 — 핵심 차이</h3>
+      <div class="compare-split">
+        <div class="compare-card left">
+          <div class="cc-label">Encoder</div>
+          <div class="cc-title">압축 · 분석</div>
+          <ul>
+            <li>고차원 → 저차원</li>
+            <li>정보를 압축·추상화</li>
+            <li>Conv / Dense (수축)</li>
+            <li>데이터의 핵심 표현 추출</li>
+            <li>분류·검색에 활용 가능</li>
+          </ul>
+        </div>
+        <div class="compare-card right">
+          <div class="cc-label">Decoder</div>
+          <div class="cc-title">복원 · 생성</div>
+          <ul>
+            <li>저차원 → 고차원</li>
+            <li>정보를 복원·재구성</li>
+            <li>Transposed Conv (확장)</li>
+            <li>잠재 표현으로 데이터 생성</li>
+            <li>생성·복원에 활용 가능</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>오토인코더가 적합한 상황</h3>
+      <p>오토인코더는 <em>레이블이 없는 데이터</em>에서 특히 빛납니다. 정답 없이 입력 자체를 목표로 학습하므로, 라벨링 비용이 높거나 불가능한 상황에서 강력한 도구가 됩니다.</p>
+
+      <div class="usecase-grid">
+        <div class="usecase-card">
+          <div class="uc-tag">Use Case 01</div>
+          <div class="uc-title">이상 탐지 (Anomaly Detection)</div>
+          <div class="uc-desc">정상 데이터만으로 학습 후, 복원 오차가 큰 샘플을 이상치로 판단합니다. 제조 결함 탐지, 금융 사기 감지, 네트워크 침입 탐지 등에 활용됩니다. 정상 데이터 외에 이상 데이터 레이블이 필요 없다는 점이 핵심입니다.</div>
+        </div>
+        <div class="usecase-card">
+          <div class="uc-tag">Use Case 02</div>
+          <div class="uc-title">차원 축소 (Dimensionality Reduction)</div>
+          <div class="uc-desc">PCA보다 비선형 구조를 더 잘 포착합니다. 잠재 벡터 <code>z</code>를 시각화하거나, 후속 분류 모델의 입력으로 사용할 수 있습니다. 고차원 데이터(이미지·텍스트)의 임베딩 추출에 유용합니다.</div>
+        </div>
+        <div class="usecase-card">
+          <div class="uc-tag">Use Case 03</div>
+          <div class="uc-title">노이즈 제거 (Denoising)</div>
+          <div class="uc-desc">노이즈가 섞인 입력을 받아 깨끗한 원본을 복원하도록 학습(Denoising Autoencoder)합니다. 이미지 복원, 오디오 잡음 제거, 결측 데이터 복구 등에 적용됩니다.</div>
+        </div>
+        <div class="usecase-card">
+          <div class="uc-tag">Use Case 04</div>
+          <div class="uc-title">생성 모델 기반 (VAE)</div>
+          <div class="uc-desc">Variational Autoencoder(VAE)로 확장하면 잠재 공간을 확률 분포로 모델링해 새로운 데이터 생성이 가능합니다. 이미지 생성, 데이터 증강, GAN 학습 초기화 등에 활용됩니다.</div>
+        </div>
+      </div>
+
+      <h3>적합하지 않은 상황도 알아두세요</h3>
+      <p class="mute">레이블이 충분히 존재한다면 지도 학습이 훨씬 효과적입니다. 오토인코더의 잠재 표현이 항상 사람이 해석할 수 있는 의미 있는 구조를 보장하지는 않습니다. 이미지 분류처럼 목표가 명확한 경우엔 CNN + Softmax 직접 학습이 더 낫습니다.</p>
+
+      <div class="interview">
+        <div class="head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z" />
+            <path d="M9 21h6" />
+          </svg>
+          면접 포인트
+        </div>
+        <p class="q">오토인코더가 지도 학습이 아닌 이유는?</p>
+        <p>→ 학습에 레이블이 필요 없습니다. 입력 <code>X</code>를 정답 <code>y</code>로 삼아 자기 자신을 재구성하도록 학습하므로 비지도 학습입니다. 다만 "자기 지도 학습(Self-supervised)"으로 분류하기도 합니다.</p>
+        <p class="q">이상 탐지에 오토인코더를 쓰는 원리는?</p>
+        <p>→ 정상 데이터만으로 학습하면 모델이 정상 패턴의 복원에 최적화됩니다. 이상 데이터는 잠재 공간에서 잘 표현되지 않아 복원 오차(Reconstruction Error)가 커집니다. 이 오차를 임계값으로 이상 여부를 판정합니다.</p>
+        <p class="q">오토인코더와 PCA의 차이는?</p>
+        <p>→ PCA는 선형 변환만 가능하지만, 오토인코더는 비선형 활성화 함수를 통해 비선형 구조도 포착합니다. 활성화 함수 없이 선형 오토인코더를 만들면 PCA와 유사한 결과를 냅니다.</p>
+        <p class="q">VAE(Variational Autoencoder)는 무엇이 다른가요?</p>
+        <p>→ 일반 오토인코더의 잠재 벡터 <code>z</code>는 고정된 점(point)이지만, VAE의 잠재 공간은 확률 분포(평균·분산)를 학습합니다. 이 덕분에 잠재 공간을 부드럽게 샘플링해 새로운 데이터를 생성할 수 있어 생성 모델로 활용됩니다.</p>
+      </div>
+    </section>
+
+    <footer>
+      <b>Weekly Paper — CNN & 오토인코더 #06</b><br>
+      팀 공유 환영 · 면접 직전 복습용으로 노란 박스·청록 박스만 빠르게 훑어도 OK<br>
+      <a class="top-link" href="#top">↑ 맨 위로</a>
+    </footer>
+
+  </div>
+</body>
+</html>
