@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>위클리 페이퍼 #8 · YOLO & mAP 콕핏</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --bg:#070b13; --bg2:#0a1019; --panel:#0e1726; --panel2:#13203400; --panelraised:#142136;
+    --line:#1d2c46; --line2:#27395a;
+    --ink:#e9f0fb; --ink-dim:#9fb0cf; --ink-faint:#5d7099;
+    --cyan:#37dcef; --cyan-deep:#0c6b80; --cyan-glow:rgba(55,220,239,.16);
+    --amber:#f7bb3f; --green:#46e3a3; --red:#fb6f7d; --violet:#94a4f2;
+    --tp:var(--green); --fp:var(--amber); --fn:var(--red);
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --sans:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;
+    --rail-w:212px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(55,220,239,.06), transparent 60%),
+      radial-gradient(900px 600px at -10% 30%, rgba(148,164,242,.05), transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:rgba(55,220,239,.28); color:#fff}
+  a{color:var(--cyan); text-decoration:none}
+
+  /* ---- top progress ---- */
+  #scanline{position:fixed; top:0; left:0; height:2px; width:0%;
+    background:linear-gradient(90deg,var(--cyan),var(--violet)); z-index:90;
+    box-shadow:0 0 12px var(--cyan-glow);}
+
+  /* ---- layout ---- */
+  .shell{display:flex; min-height:100vh}
+  .rail{
+    position:fixed; top:0; left:0; width:var(--rail-w); height:100vh;
+    padding:26px 16px; border-right:1px solid var(--line);
+    background:linear-gradient(180deg,var(--bg2),rgba(10,16,25,.4));
+    display:flex; flex-direction:column; gap:4px; z-index:80; backdrop-filter:blur(6px);
+  }
+  .rail .brand{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    color:var(--cyan); text-transform:uppercase; margin-bottom:2px}
+  .rail .brand b{color:var(--ink); display:block; font-size:13px; letter-spacing:.04em; margin-top:5px; font-weight:700}
+  .rail nav{margin-top:18px; display:flex; flex-direction:column; gap:2px}
+  .rail a.nav{
+    display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px;
+    color:var(--ink-faint); font-size:13.5px; font-weight:500; transition:.18s; border:1px solid transparent;
+  }
+  .rail a.nav .idx{font-family:var(--mono); font-size:10.5px; color:var(--ink-faint); width:18px}
+  .rail a.nav:hover{color:var(--ink-dim); background:rgba(255,255,255,.02)}
+  .rail a.nav.active{color:var(--ink); background:var(--cyan-glow); border-color:rgba(55,220,239,.3)}
+  .rail a.nav.active .idx{color:var(--cyan)}
+  .rail .foot{margin-top:auto; font-family:var(--mono); font-size:10px; color:var(--ink-faint); letter-spacing:.05em; line-height:1.7}
+
+  main{margin-left:var(--rail-w); flex:1; padding:0 clamp(20px,5vw,84px)}
+  section{max-width:1040px; margin:0 auto; padding:92px 0 60px; scroll-margin-top:10px}
+  section + section{border-top:1px solid var(--line)}
+
+  /* ---- type ---- */
+  .eyebrow{font-family:var(--mono); font-size:11.5px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--cyan); display:flex; align-items:center; gap:10px; margin:0 0 14px}
+  .eyebrow::before{content:""; width:26px; height:1px; background:var(--cyan); opacity:.7}
+  h1{font-size:clamp(34px,5vw,58px); line-height:1.05; font-weight:800; letter-spacing:-.02em; margin:.1em 0 .25em}
+  h2{font-size:clamp(25px,3.2vw,36px); font-weight:800; letter-spacing:-.015em; margin:0 0 .5em; line-height:1.15}
+  h3{font-size:19px; font-weight:700; margin:1.6em 0 .5em; color:var(--ink)}
+  p{color:var(--ink-dim); margin:.5em 0}
+  strong{color:var(--ink); font-weight:700}
+  .lead{font-size:18px; color:var(--ink-dim)}
+  code{font-family:var(--mono); font-size:.88em; background:rgba(55,220,239,.1); color:var(--cyan);
+    padding:.12em .42em; border-radius:5px}
+  .mono{font-family:var(--mono)}
+
+  /* ---- hero (cover) ---- */
+  .hero{
+    min-height:100vh; display:flex; flex-direction:column; justify-content:center; position:relative;
+    max-width:none; padding:0 clamp(20px,5vw,84px); overflow:hidden;
+    margin-left:calc(-1*clamp(20px,5vw,84px)); margin-right:calc(-1*clamp(20px,5vw,84px));
+    background:
+      radial-gradient(1100px 640px at 80% 6%, rgba(55,220,239,.14), transparent 56%),
+      radial-gradient(900px 620px at 4% 82%, rgba(148,164,242,.12), transparent 55%),
+      linear-gradient(180deg,#05080f 0%,#070d18 58%,var(--bg) 100%);
+  }
+  .hero + section{border-top:none}                 /* 표지→내용 자연스럽게 이어짐 */
+  .hero::after{                                     /* 로드 시 1회 스캔 스윕 */
+    content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background:linear-gradient(100deg,transparent 42%,rgba(55,220,239,.10) 50%,transparent 58%);
+    transform:translateX(-60%);
+  }
+  .reticle{position:absolute; inset:0; pointer-events:none; opacity:.5; z-index:0}
+  .hero-inner{position:relative; z-index:1; max-width:1040px; margin:0 auto; width:100%}
+  .hero h1{
+    background:linear-gradient(102deg,#eef7ff 0%,#74e7f4 46%,#aab6ff 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  @keyframes heroUp{from{opacity:0; transform:translateY(20px)} to{opacity:1; transform:translateY(0)}}
+  @keyframes sweep{0%{transform:translateX(-60%)} 100%{transform:translateX(120%)}}
+  @media (prefers-reduced-motion:no-preference){
+    .hero::after{animation:sweep 2.8s ease-in-out .35s 1 forwards}
+    .hero-inner > *{opacity:0; animation:heroUp .72s cubic-bezier(.2,.7,.2,1) forwards}
+    .hero-inner > .eyebrow{animation-delay:.06s}
+    .hero-inner > h1{animation-delay:.2s}
+    .hero-inner > .lead{animation-delay:.4s}
+    .hero-inner > .q-grid{animation-delay:.54s}
+    .hero-inner > .tldr{animation-delay:.68s}
+    .hero-inner > .scrollcue{animation-delay:.82s}
+  }
+  .q-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:30px; max-width:760px}
+  .q{border:1px solid var(--line2); border-radius:12px; padding:18px 20px; background:linear-gradient(160deg,var(--panel),rgba(14,23,38,.3))}
+  .q .qn{font-family:var(--mono); font-size:11px; color:var(--cyan); letter-spacing:.12em}
+  .q p{margin:.4em 0 0; color:var(--ink); font-weight:600; font-size:15.5px; line-height:1.45}
+  .tldr{margin-top:26px; max-width:760px; border-left:2px solid var(--cyan); padding:6px 0 6px 18px; color:var(--ink-dim); font-size:15.5px}
+  .tldr b{color:var(--cyan)}
+  .scrollcue{margin-top:40px; font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--ink-faint);
+    display:flex; align-items:center; gap:10px; text-transform:uppercase}
+  .scrollcue .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan); animation:blink 1.6s infinite}
+  @keyframes blink{0%,100%{opacity:.25}50%{opacity:1; box-shadow:0 0 10px var(--cyan)}}
+
+  /* ---- cards / panels ---- */
+  .panel{background:linear-gradient(165deg,var(--panel),rgba(10,16,25,.35)); border:1px solid var(--line);
+    border-radius:14px; padding:22px 24px; margin:18px 0}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px}
+  .card .k{font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--cyan); text-transform:uppercase}
+  .card h4{margin:.5em 0 .3em; font-size:16px; font-weight:700}
+  .card p{font-size:14px; margin:.2em 0 0}
+
+  /* ---- callouts ---- */
+  .note{border-radius:12px; padding:15px 18px 15px 18px; margin:18px 0; font-size:14.5px; border:1px solid;
+    display:flex; gap:13px; align-items:flex-start}
+  .note .ic{font-family:var(--mono); font-weight:700; font-size:12px; padding:2px 8px; border-radius:6px; white-space:nowrap; margin-top:1px}
+  .note.tip{background:rgba(70,227,163,.06); border-color:rgba(70,227,163,.28)}
+  .note.tip .ic{background:rgba(70,227,163,.16); color:var(--green)}
+  .note.imp{background:rgba(247,187,63,.06); border-color:rgba(247,187,63,.28)}
+  .note.imp .ic{background:rgba(247,187,63,.16); color:var(--amber)}
+  .note.info{background:rgba(55,220,239,.05); border-color:rgba(55,220,239,.24)}
+  .note.info .ic{background:rgba(55,220,239,.14); color:var(--cyan)}
+  .note p{margin:0; color:var(--ink-dim)}
+  .summary{background:linear-gradient(120deg,rgba(55,220,239,.08),rgba(148,164,242,.05));
+    border:1px solid rgba(55,220,239,.28); border-radius:12px; padding:16px 20px; margin:22px 0; font-size:14.5px}
+  .summary b{color:var(--cyan)}
+
+  /* ---- tables ---- */
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); font-weight:500}
+  td strong{color:var(--ink)}
+  tbody tr:hover{background:rgba(255,255,255,.015)}
+
+  /* ---- formula ---- */
+  .formula{font-family:var(--mono); background:var(--bg2); border:1px solid var(--line); border-radius:10px;
+    padding:14px 18px; margin:14px 0; color:var(--ink); font-size:15px; overflow-x:auto}
+  .formula .frac{display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px}
+  .formula .frac .num{border-bottom:1.5px solid var(--ink-faint); padding:0 6px 2px}
+  .formula .frac .den{padding:2px 6px 0}
+  .formula .hl-tp{color:var(--green)} .formula .hl-fp{color:var(--amber)} .formula .hl-fn{color:var(--red)}
+
+  /* ===== interactive: 2-stage vs 1-stage race ===== */
+  .race{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:8px}
+  .lane{background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:16px 18px}
+  .lane h4{margin:0 0 4px; font-size:15px}
+  .lane .tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; color:var(--ink-faint)}
+  .pipe{display:flex; gap:6px; margin:14px 0 10px; height:30px}
+  .pstep{flex:1; border-radius:6px; background:#0d1626; border:1px solid var(--line); display:flex; align-items:center;
+    justify-content:center; font-family:var(--mono); font-size:10.5px; color:var(--ink-faint); transition:.25s}
+  .pstep.on{color:#03121a; font-weight:700}
+  .lane.two .pstep.on{background:var(--amber); border-color:var(--amber); box-shadow:0 0 14px rgba(247,187,63,.4)}
+  .lane.one .pstep.on{background:var(--cyan); border-color:var(--cyan); box-shadow:0 0 14px var(--cyan-glow)}
+  .lane .readout{font-family:var(--mono); font-size:13px; color:var(--ink-dim)}
+  .lane .readout b{font-size:21px}
+  .lane.two .readout b{color:var(--amber)} .lane.one .readout b{color:var(--cyan)}
+  .btn{font-family:var(--mono); font-size:12.5px; letter-spacing:.04em; cursor:pointer; border-radius:9px;
+    padding:10px 18px; background:var(--cyan); color:#04141a; border:1px solid var(--cyan); font-weight:700; transition:.15s}
+  .btn:hover{filter:brightness(1.12); box-shadow:0 0 18px var(--cyan-glow)}
+  .btn.ghost{background:transparent; color:var(--ink-dim); border-color:var(--line2)}
+  .btn.ghost:hover{color:var(--ink); border-color:var(--cyan); box-shadow:none}
+  .btn:disabled{opacity:.4; cursor:default; box-shadow:none; filter:none}
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px}
+
+  /* ===== evolution rail ===== */
+  .evo{display:flex; gap:0; margin:20px 0 4px; position:relative; overflow-x:auto; padding-bottom:6px}
+  .evo::before{content:""; position:absolute; top:24px; left:6%; right:6%; height:2px;
+    background:linear-gradient(90deg,var(--line2),var(--cyan)); opacity:.5}
+  .enode{flex:1; min-width:120px; text-align:center; position:relative; padding:0 6px}
+  .enode .dot{width:14px;height:14px;border-radius:50%;background:var(--bg2); border:2px solid var(--line2);
+    margin:18px auto 12px; position:relative; z-index:1; transition:.2s}
+  .enode.live .dot{background:var(--cyan); border-color:var(--cyan); box-shadow:0 0 16px var(--cyan)}
+  .enode .yr{font-family:var(--mono); font-size:11px; color:var(--cyan)}
+  .enode .nm{font-weight:700; font-size:13.5px; margin:2px 0}
+  .enode .ds{font-size:11.5px; color:var(--ink-faint); line-height:1.4}
+  .enode.live .nm{color:var(--cyan)}
+
+  /* ===== NMS demo ===== */
+  .stage{background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:8px}
+  .nms-wrap{position:relative; width:100%; max-width:440px; margin:0 auto}
+  .nms-svg{width:100%; height:auto; display:block; border-radius:8px}
+
+  /* ===== NMS / IoU simulator ===== */
+  .sim-wrap{display:grid; grid-template-columns:1fr 344px; gap:22px; align-items:start; margin-top:12px}
+  .sim-svg{width:100%; height:auto; display:block; background:var(--bg2); border:1px solid var(--line); border-radius:10px}
+  .knob-note{font-size:11.5px; color:var(--ink-faint); margin-top:6px; line-height:1.5}
+  .knob-note b{color:var(--cyan); font-family:var(--mono); font-size:10px; letter-spacing:.04em; text-transform:uppercase}
+  .slider-row.off{opacity:.42}
+  .slider-row.off .knob-note{color:var(--red)} .slider-row.off .knob-note b{color:var(--red)}
+  input[type=range]:disabled{cursor:not-allowed}
+  .pipe-strip{display:flex; align-items:center; gap:7px; margin-top:14px; flex-wrap:wrap; font-family:var(--mono); font-size:11px}
+  .pipe-strip .ps{background:var(--bg2); border:1px solid var(--line); border-radius:7px; padding:6px 11px; color:var(--ink-dim)}
+  .pipe-strip .ps b{color:var(--cyan); font-size:13px; font-weight:700}
+  .pipe-strip .ar{color:var(--ink-faint)}
+  .sim-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--ink-dim)}
+  .sim-legend span{display:inline-flex; align-items:center; gap:6px}
+  .sim-legend i{width:16px; height:10px; border-radius:2px; display:inline-block}
+
+  /* ===== IoU lab ===== */
+  .lab{display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:center; margin-top:8px}
+  .iou-svg{width:100%; height:auto; display:block; touch-action:none; cursor:grab; border-radius:10px; background:var(--bg2); border:1px solid var(--line)}
+  .iou-svg:active{cursor:grabbing}
+  .readout-big{font-family:var(--mono); font-size:54px; font-weight:700; line-height:1; letter-spacing:-.02em}
+  .verdict{display:inline-block; font-family:var(--mono); font-size:13px; font-weight:700; padding:6px 14px;
+    border-radius:8px; letter-spacing:.05em; margin-top:6px}
+  .verdict.tp{background:rgba(70,227,163,.16); color:var(--green); border:1px solid var(--green)}
+  .verdict.fp{background:rgba(247,187,63,.16); color:var(--amber); border:1px solid var(--amber)}
+
+  /* sliders */
+  .slider-row{margin:16px 0}
+  .slider-row label{display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; color:var(--ink-dim); margin-bottom:6px}
+  .slider-row label .val{color:var(--cyan); font-weight:700}
+  input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:5px;
+    background:var(--line2); outline:none; cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:17px; height:17px; border-radius:50%;
+    background:var(--cyan); border:2px solid #04141a; box-shadow:0 0 10px var(--cyan-glow); cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:15px; height:15px; border-radius:50%; background:var(--cyan); border:2px solid #04141a; cursor:pointer}
+
+  /* metric chips */
+  .chips{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px}
+  .chip{flex:1; min-width:90px; background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:11px 13px; text-align:center}
+  .chip .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--ink-faint); text-transform:uppercase}
+  .chip .num{font-family:var(--mono); font-size:24px; font-weight:700; margin-top:3px}
+  .chip.tp .num{color:var(--green)} .chip.fp .num{color:var(--amber)} .chip.fn .num{color:var(--red)}
+  .chip.p .num{color:var(--cyan)} .chip.r .num{color:var(--violet)}
+
+  /* ===== PR console ===== */
+  .pr-wrap{display:grid; grid-template-columns:1fr 320px; gap:22px; align-items:start; margin-top:8px}
+  .pr-canvas{width:100%; height:auto; display:block; background:var(--bg2); border:1px solid var(--line); border-radius:10px}
+
+  /* ===== AP gates ===== */
+  .gates{display:flex; gap:6px; margin:16px 0 6px; align-items:flex-end; height:120px}
+  .gate{flex:1; background:#0d1626; border:1px solid var(--line); border-radius:6px 6px 0 0; position:relative;
+    display:flex; align-items:flex-end; justify-content:center; transition:.2s; height:40%}
+  .gate.lit{background:linear-gradient(180deg,var(--cyan),var(--cyan-deep)); border-color:var(--cyan); box-shadow:0 0 14px var(--cyan-glow)}
+  .gate .gl{position:absolute; bottom:-22px; font-family:var(--mono); font-size:10px; color:var(--ink-faint)}
+  .toggle-row{display:flex; gap:10px; margin:34px 0 6px}
+  .tg{font-family:var(--mono); font-size:12px; padding:9px 16px; border-radius:9px; cursor:pointer; border:1px solid var(--line2); color:var(--ink-dim); background:transparent; transition:.15s}
+  .tg.on{background:var(--cyan); color:#04141a; border-color:var(--cyan); font-weight:700}
+  .gate .gv{position:absolute; top:-17px; font-family:var(--mono); font-size:9.5px; color:var(--ink-faint); transition:.2s}
+  .gate.lit .gv{color:var(--cyan); font-weight:700}
+  .ap-score{display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; margin:30px 0 6px}
+  .ap-score .lbl{font-family:var(--mono); font-size:12px; color:var(--ink-dim)}
+  .ap-score .big{font-family:var(--mono); font-size:32px; font-weight:700; color:var(--cyan); line-height:1}
+  /* class × IoU matrix */
+  .matrix{margin:14px 0 6px; overflow-x:auto}
+  .matrix table{border-collapse:separate; border-spacing:3px; width:100%; min-width:600px; margin:0}
+  .matrix th{font-family:var(--mono); font-size:10px; color:var(--ink-faint); padding:2px 3px; text-align:center;
+    text-transform:none; letter-spacing:0; border:none; font-weight:500}
+  .matrix td.rowh{font-size:12.5px; color:var(--ink-dim); white-space:nowrap; padding-right:10px; border:none; text-align:right}
+  .matrix td.cell{font-family:var(--mono); font-size:10.5px; text-align:center; padding:7px 0; border-radius:4px;
+    color:#dff4fb; transition:.18s; border:1.5px solid transparent}
+  .matrix td.cell.hl{border-color:var(--cyan); color:#fff; font-weight:700; box-shadow:0 0 10px var(--cyan-glow)}
+  .matrix td.cell.dim{opacity:.22}
+  .matrix td.avg{font-family:var(--mono); font-size:12px; font-weight:700; color:var(--cyan); text-align:center;
+    padding:7px 9px; background:var(--cyan-glow); border-radius:5px; border:1px solid rgba(55,220,239,.32); white-space:nowrap}
+  .matrix td.avg.off{opacity:.25; color:var(--ink-faint); background:transparent; border-color:var(--line)}
+  /* appendix table */
+  .aptbl tr.cat td{background:var(--cyan-glow); color:var(--cyan); font-family:var(--mono); font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase; font-weight:700; padding:9px 14px; border-bottom:1px solid var(--line2)}
+  .aptbl td:first-child{color:var(--ink); font-weight:600; white-space:nowrap}
+  .aptbl td .mn{font-family:var(--mono); font-size:12px; color:var(--cyan)}
+
+  /* ===== safety sim ===== */
+  .yard{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin:16px 0}
+  .worker{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:12px 8px; text-align:center; transition:.2s; position:relative}
+  .worker .face{font-size:26px; line-height:1}
+  .worker .c{font-family:var(--mono); font-size:10.5px; color:var(--ink-faint); margin-top:4px}
+  .worker .st{font-family:var(--mono); font-size:10px; font-weight:700; margin-top:3px; letter-spacing:.04em}
+  .worker.ok{border-color:var(--green)} .worker.ok .st{color:var(--green)}
+  .worker.miss{border-color:var(--red); background:rgba(251,111,125,.07)} .worker.miss .st{color:var(--red)}
+  .worker.fp{border-color:var(--amber); background:rgba(247,187,63,.06)} .worker.fp .st{color:var(--amber)}
+  .worker.bg{opacity:.5}
+  .alarm{font-family:var(--mono); font-size:14px; margin-top:8px}
+  .alarm b{font-size:20px}
+
+  .footnote{font-size:12.5px; color:var(--ink-faint); margin-top:8px; font-family:var(--mono)}
+
+  /* responsive */
+  @media (max-width:900px){
+    .rail{position:static; width:auto; height:auto; flex-direction:row; flex-wrap:wrap; align-items:center; border-right:none; border-bottom:1px solid var(--line)}
+    .rail nav{flex-direction:row; flex-wrap:wrap; margin-top:0; gap:4px}
+    .rail .brand, .rail .foot{width:100%}
+    .rail .foot{display:none}
+    main{margin-left:0}
+    .lab,.pr-wrap,.sim-wrap{grid-template-columns:1fr}
+    .grid2,.grid3,.race,.q-grid{grid-template-columns:1fr}
+    .yard{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important; transition:none !important; scroll-behavior:auto !important}
+  }
+</style>
+</head>
+<body>
+<div id="scanline"></div>
+
+<div class="shell">
+  <!-- ============ RAIL ============ -->
+  <aside class="rail">
+    <div class="brand">WEEKLY PAPER · 08<b>YOLO &amp; mAP 콕핏</b></div>
+    <nav>
+      <a class="nav" href="#s0"><span class="idx">00</span>들어가며</a>
+      <a class="nav" href="#s1"><span class="idx">01</span>YOLO 원리</a>
+      <a class="nav" href="#s2"><span class="idx">02</span>진화 &amp; NMS</a>
+      <a class="nav" href="#s2b"><span class="idx">03</span>NMS 시뮬레이터</a>
+      <a class="nav" href="#s3"><span class="idx">04</span>장점 · 한계</a>
+      <a class="nav" href="#s4"><span class="idx">05</span>IoU 실험실</a>
+      <a class="nav" href="#s5"><span class="idx">06</span>P·R 콘솔</a>
+      <a class="nav" href="#s6"><span class="idx">07</span>AP → mAP</a>
+      <a class="nav" href="#s7"><span class="idx">08</span>실전 사례</a>
+      <a class="nav" href="#s8"><span class="idx">09</span>핵심 정리</a>
+      <a class="nav" href="#s9"><span class="idx">10</span>부록 · 튜닝표</a>
+    </nav>
+    <div class="foot">↑ / ↓ 섹션 이동<br>드래그 · 슬라이더로 시연</div>
+  </aside>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <section id="s0" class="hero">
+      <svg class="reticle" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#37dcef" stop-opacity=".5"/><stop offset="1" stop-color="#94a4f2" stop-opacity=".2"/>
+        </linearGradient></defs>
+        <g stroke="url(#rg)" stroke-width="1.4" fill="none">
+          <rect id="ret" x="600" y="120" width="220" height="150" rx="4"/>
+          <path d="M600 105 v-16 M820 105 v-16 M600 285 v16 M820 285 v16"/>
+          <path d="M585 120 h-16 M585 270 h-16 M835 120 h16 M835 270 h16"/>
+        </g>
+        <line x1="710" y1="40" x2="710" y2="350" stroke="#37dcef" stroke-opacity=".12"/>
+        <line x1="500" y1="195" x2="920" y2="195" stroke="#37dcef" stroke-opacity=".12"/>
+      </svg>
+      <div class="hero-inner">
+        <div class="eyebrow">Object Detection · 2026 Edition</div>
+        <h1>한 번 보고 끝낸다.<br>그리고 숫자 하나로 채점한다.</h1>
+        <p class="lead">YOLO가 객체를 검출하는 방식과, mAP가 그 성능을 평가하는 원리를 — 직접 드래그하고 슬라이더를 돌리며 확인합니다.</p>
+
+        <div class="q-grid">
+          <div class="q"><div class="qn">Q1</div><p>YOLO 모델의 주요 특징과 장점은 무엇인가?</p></div>
+          <div class="q"><div class="qn">Q2</div><p>mAP란 무엇이며 객체 검출에서 어떻게 활용되는가?</p></div>
+        </div>
+
+        <div class="tldr">
+          <b>한 줄 답</b> — YOLO는 <b>이미지를 한 번 보고 위치·종류를 동시에 회귀</b>하는 1-Stage 실시간 검출기이고,
+          mAP는 <b>그 정확도를 숫자 하나로 요약</b>한 최종 성적표입니다.
+        </div>
+        <div class="scrollcue"><span class="dot"></span>스크롤 또는 ↓ 키로 시작</div>
+      </div>
+    </section>
+
+    <!-- ============ 01 YOLO 원리 ============ -->
+    <section id="s1">
+      <div class="eyebrow">Part 1 · 핵심 아이디어</div>
+      <h2>검출을 '회귀 문제'로 재정의하다</h2>
+      <p>과거의 <strong>2-Stage 검출기</strong>(Faster R-CNN 계열)는 ① 물체가 있을 법한 영역을 먼저 제안하고 ② 그 영역을 다시 분류·박스 회귀에 통과시킵니다. 정확하지만 단계가 나뉘어 느립니다. <strong>YOLO(1-Stage)</strong>는 이 과정을 <strong>하나의 엔드투엔드 회귀 문제</strong>로 합쳐, 이미지 전체를 단 한 번 통과시키며 위치와 클래스 확률을 동시에 출력합니다.</p>
+
+      <h3>⚡ 추론 레이스 — 직접 돌려보기</h3>
+      <p>같은 한 프레임을 두 파이프라인에 통과시켜 봅니다. (속도는 개념 전달용 수치)</p>
+      <div class="race">
+        <div class="lane two">
+          <h4>2-Stage · Faster R-CNN</h4><div class="tag">REGION PROPOSAL → CLASSIFY (순차)</div>
+          <div class="pipe">
+            <div class="pstep" data-i="0">제안</div><div class="pstep" data-i="1">정렬</div>
+            <div class="pstep" data-i="2">분류</div><div class="pstep" data-i="3">회귀</div>
+          </div>
+          <div class="readout">처리 속도 <b id="fps2">—</b> <span style="font-size:12px">FPS</span></div>
+        </div>
+        <div class="lane one">
+          <h4>1-Stage · YOLO</h4><div class="tag">SINGLE PASS (한 번 통과)</div>
+          <div class="pipe">
+            <div class="pstep" data-i="0">한 번 통과</div>
+          </div>
+          <div class="readout">처리 속도 <b id="fps1">—</b> <span style="font-size:12px">FPS</span></div>
+        </div>
+      </div>
+      <div class="controls"><button class="btn" id="raceBtn">▶ 추론 실행</button></div>
+
+      <div class="note info"><span class="ic">동작</span><p>이미지를 <b>S×S 격자</b>로 나누고, 각 셀이 <b>바운딩 박스 (x,y,w,h)</b>, <b>신뢰도(물체 존재 × 박스 정확도)</b>, <b>클래스 확률</b>을 동시에 예측합니다. 최종 점수 = 클래스 확률 × 신뢰도.</p></div>
+    </section>
+
+    <!-- ============ 02 진화 & NMS ============ -->
+    <section id="s2">
+      <div class="eyebrow">Part 1 · 구조의 진화</div>
+      <h2>앵커 → 앵커프리 → NMS-free</h2>
+      <p>YOLO의 구조는 버전을 거치며 계속 <strong>단순해지는</strong> 방향으로 진화했습니다.</p>
+
+      <div class="evo">
+        <div class="enode"><div class="dot"></div><div class="yr">2016</div><div class="nm">YOLOv1</div><div class="ds">박스를 직접 예측<br>(앵커 없음)</div></div>
+        <div class="enode"><div class="dot"></div><div class="yr">'16–'22</div><div class="nm">v2 – v7</div><div class="ds">앵커 박스 도입<br>사전 틀 기준 조정</div></div>
+        <div class="enode"><div class="dot"></div><div class="yr">2023</div><div class="nm">YOLOv8</div><div class="ds">다시 Anchor-Free<br>디커플드 헤드</div></div>
+        <div class="enode"><div class="dot"></div><div class="yr">2024</div><div class="nm">YOLOv10</div><div class="ds">이중 할당으로<br>NMS-free 학습</div></div>
+        <div class="enode live"><div class="dot"></div><div class="yr">2026.1</div><div class="nm">YOLO26</div><div class="ds">네이티브 NMS-free<br>STAL · 현재 기본값</div></div>
+      </div>
+
+      <div class="note imp"><span class="ic">정정</span><p>"초기 YOLO부터 앵커를 썼다"는 흔한 오해입니다. <b>앵커는 YOLOv2부터</b> 도입됐고, <b>YOLOv8에서 다시 앵커프리로 회귀</b>했습니다.</p></div>
+
+      <h3>🧹 NMS 시연 — 중복 박스는 어떻게 정리될까</h3>
+      <p>YOLO는 한 객체에 중복 박스를 여러 개 만듭니다. 추론 마지막에 <strong>NMS(Non-Maximum Suppression)</strong>로 신뢰도 1위만 남기고 나머지를 제거하죠. 이 후처리가 지연(Latency)의 주범이었습니다.</p>
+      <div class="stage">
+        <div class="nms-wrap">
+          <svg class="nms-svg" id="nmsSvg" viewBox="0 0 440 240" aria-label="NMS 시연"></svg>
+        </div>
+        <div class="controls" style="justify-content:center">
+          <button class="btn" id="nmsApply">NMS 적용</button>
+          <button class="btn ghost" id="nmsFree">YOLO26: NMS-free</button>
+          <button class="btn ghost" id="nmsReset">초기화</button>
+        </div>
+      </div>
+      <div class="note tip"><span class="ic">최신 동향</span><p>한때 NMS-free는 트랜스포머 계열(<b>RT-DETR · D-FINE · DEIM</b>)의 전유물이었습니다. 이제는 YOLO 본가가 흡수했습니다 — YOLOv10이 길을 열고, <b>YOLO26이 네이티브 NMS-free를 기본 탑재</b>하면서 "NMS 없는 실시간 검출"이 <b>표준 디폴트</b>가 됐습니다.</p></div>
+    </section>
+
+    <!-- ============ 02b NMS/IoU 시뮬레이터 ============ -->
+    <section id="s2b">
+      <div class="eyebrow">Part 1 · 인터랙티브 시뮬레이터</div>
+      <h2>세 개의 임계값, 각자 다른 일을 한다</h2>
+      <p>가장 헷갈리는 지점 — <strong>Confidence</strong>와 두 종류의 <strong>IoU(‘중복 제거용’과 ‘채점용’)</strong>가 각각 <em>어디서, 무슨 일</em>을 하는지를 슬라이더로 분리해서 봅니다. <strong>NMS 적용</strong> ↔ <strong>NMS-free</strong>를 토글하면 <em>어떤 노브가 살아있고 어떤 노브가 죽는지</em>가 그대로 드러납니다.</p>
+
+      <div class="toggle-row" style="margin:18px 0 4px">
+        <button class="tg on" id="simNms">NMS 적용 모드</button>
+        <button class="tg" id="simFree">NMS-free 모드 (YOLO26)</button>
+      </div>
+
+      <div class="sim-wrap">
+        <div>
+          <svg id="simSvg" viewBox="0 0 520 320" class="sim-svg" aria-label="NMS/IoU 시뮬레이터"></svg>
+          <div class="sim-legend">
+            <span><i style="background:#46e3a3"></i>TP (정탐)</span>
+            <span><i style="background:#f7bb3f"></i>FP (오탐)</span>
+            <span><i style="border:1.5px dashed #94a4f2;background:transparent"></i>GT (정답)</span>
+            <span><i style="border:1.5px dashed #fb6f7d;background:transparent"></i>FN (놓침)</span>
+            <span><i style="border:1px dashed #5d7099;background:transparent;opacity:.6"></i>제거됨</span>
+          </div>
+          <div class="pipe-strip" id="pipeStrip"></div>
+        </div>
+        <div>
+          <div class="slider-row">
+            <label>① Confidence 임계값 <span class="val" id="scv">0.50</span></label>
+            <input type="range" id="confSim" min="0.1" max="0.95" step="0.01" value="0.5">
+            <div class="knob-note"><b>추론 · 공통</b> 박스의 ‘물체일 확신’이 이 값 미만이면 버립니다. 배경 오탐을 거르는 1차 필터.</div>
+          </div>
+          <div class="slider-row" id="nmsRow">
+            <label>② NMS IoU 임계값 <span class="val" id="snv">0.50</span></label>
+            <input type="range" id="nmsSim" min="0.2" max="0.9" step="0.01" value="0.5">
+            <div class="knob-note"><b>추론 · NMS 전용</b> 남은 박스끼리 이만큼 겹치면 신뢰도 낮은 쪽을 ‘중복’으로 제거. 높일수록 중복이 살아남습니다.</div>
+          </div>
+          <div class="slider-row">
+            <label>③ 평가 IoU 임계값 <span class="val" id="sev">0.50</span></label>
+            <input type="range" id="evalSim" min="0.3" max="0.9" step="0.01" value="0.5">
+            <div class="knob-note"><b>평가 · 공통</b> 최종 박스가 정답(GT)과 이만큼 겹쳐야 TP로 인정. mAP를 채점할 때 쓰는 기준선.</div>
+          </div>
+
+          <div class="chips" style="margin-top:16px">
+            <div class="chip tp"><div class="lbl">TP</div><div class="num" id="sTP">0</div></div>
+            <div class="chip fp"><div class="lbl">FP</div><div class="num" id="sFP">0</div></div>
+            <div class="chip fn"><div class="lbl">FN</div><div class="num" id="sFN">0</div></div>
+          </div>
+          <div class="chips" style="margin-top:10px">
+            <div class="chip p"><div class="lbl">Precision</div><div class="num" id="sP">0.00</div></div>
+            <div class="chip r"><div class="lbl">Recall</div><div class="num" id="sR">0.00</div></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>한눈에 비교 — 세 노브의 정체</h3>
+      <table>
+        <thead><tr><th>노브</th><th>무엇을 재나</th><th>쓰이는 단계</th><th>NMS-free에서는?</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Confidence</strong></td><td>박스에 물체가 있을 ‘확신도’</td><td>추론 (필터)</td><td style="color:var(--green)">그대로 사용 ✓</td></tr>
+          <tr><td><strong>NMS IoU</strong></td><td>남은 박스끼리 겹친 정도</td><td>추론 (중복 제거)</td><td style="color:var(--red)">사용 안 함 ✗</td></tr>
+          <tr><td><strong>평가 IoU</strong></td><td>최종 박스와 정답(GT)의 겹침</td><td>평가 (TP/FP 채점)</td><td style="color:var(--green)">그대로 사용 ✓</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note tip"><span class="ic">핵심</span><p><b>“IoU가 사라진다”가 아닙니다.</b> NMS-free 모델(YOLO26 등)은 학습 단계의 <b>일대일 매칭</b>으로 객체당 박스를 <b>처음부터 1개만</b> 내보내므로, 추론 파이프라인에서 <b>중복 제거용 NMS IoU 노브</b>를 돌릴 일이 없을 뿐입니다. 성능을 채점하는 <b>평가 IoU</b>는 두 모드 모두에서 똑같이 살아있습니다 — 사라지는 건 ‘IoU’가 아니라 ‘추론 시 튜닝하던 NMS IoU 임계값’입니다.</p></div>
+      <div class="note info"><span class="ic">실험 가이드</span><p>① <b>NMS IoU를 0.7↑</b>로 올려보세요 — 중복 박스가 되살아나 FP가 늘어납니다. ② <b>모드를 NMS-free로</b> 바꾸면 ② 슬라이더가 비활성화되고 중복이 애초에 없습니다. ③ <b>평가 IoU를 0.65↑</b>로 올리면, 위치가 어설픈 박스가 같은 자리인데도 TP→FP로 뒤집힙니다(두 모드 공통). ④ <b>Confidence를 0.6↑</b>로 올리면 배경 오탐이 사라집니다.</p></div>
+    </section>
+
+    <!-- ============ 03 장점 한계 ============ -->
+    <section id="s3">
+      <div class="eyebrow">Part 1 · 강점과 한계</div>
+      <h2>왜 빠르고, 무엇이 어려운가</h2>
+      <div class="grid3">
+        <div class="card"><div class="k">Speed</div><h4>실시간 추론</h4><p>단일 신경망이라 연산 낭비가 적어 FPS가 높습니다. 엣지·온디바이스에서 끊김 없는 스트리밍 처리.</p></div>
+        <div class="card"><div class="k">Context</div><h4>글로벌 컨텍스트</h4><p>이미지 전체를 한 번에 보므로 배경-객체 관계까지 학습 → 빈 배경 오탐(FP)이 적습니다.</p></div>
+        <div class="card"><div class="k">Robust</div><h4>강한 일반화</h4><p>예술 작품 등 학습 분포 밖(OOD) 데이터에서도 객체의 본질적 특징을 잘 잡아냅니다.</p></div>
+      </div>
+
+      <h3>전통적 한계와 극복</h3>
+      <div class="grid2">
+        <div class="card"><div class="k" style="color:var(--red)">Limitation 01</div><h4>소형 객체 검출</h4>
+          <p>다운샘플링으로 해상도가 손실돼 작은 물체(새 떼·먼 차량)가 뭉개집니다. → <strong>FPN 고도화 · 다중 스케일</strong>, 그리고 YOLO26의 <strong>STAL</strong>(소형 객체 인지 라벨 할당)로 학습 단계부터 보강.</p></div>
+        <div class="card"><div class="k" style="color:var(--amber)">Limitation 02</div><h4>NMS 연산 병목</h4>
+          <p>중복 박스 제거용 NMS는 CPU 바운드로 동작해 지연을 키웠습니다. → 위에서 본 대로 <strong>NMS-free 설계</strong>로 정면 돌파.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 04 IoU 실험실 ============ -->
+    <section id="s4">
+      <div class="eyebrow">Part 2 · 1단계 — 합격 판정</div>
+      <h2>IoU 실험실</h2>
+      <p><strong>IoU(Intersection over Union)</strong>는 정답(GT) 박스와 예측 박스가 얼마나 겹치는지를 잰 값입니다. <strong>예측 박스(시안)를 드래그</strong>하고 크기를 조절하면서, IoU가 어떻게 변하고 임계값에 따라 <strong>TP / FP</strong> 판정이 뒤집히는지 직접 보세요.</p>
+
+      <div class="lab">
+        <svg class="iou-svg" id="iouSvg" viewBox="0 0 480 320" aria-label="IoU 드래그 실험실"></svg>
+        <div>
+          <div class="readout-big" id="iouVal" style="color:var(--cyan)">0.00</div>
+          <div class="mono" style="font-size:12px;color:var(--ink-faint);margin-top:2px">IoU = 교집합 ÷ 합집합</div>
+          <div id="iouVerdict" class="verdict fp">판정: FP</div>
+
+          <div class="slider-row">
+            <label>예측 박스 크기 <span class="val"><span id="szv">1.00</span>×</span></label>
+            <input type="range" id="szRange" min="0.5" max="1.6" step="0.01" value="1">
+          </div>
+          <div class="slider-row">
+            <label>IoU 합격 임계값 <span class="val" id="thv">0.50</span></label>
+            <input type="range" id="thRange" min="0.1" max="0.9" step="0.05" value="0.5">
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>판정</th><th>조건</th><th>의미</th></tr></thead>
+        <tbody>
+          <tr><td><strong style="color:var(--green)">TP</strong></td><td>신뢰도 ≥ 임계값 <b>이고</b> IoU ≥ 기준값</td><td>실제 객체를 올바르게 찾아냄</td></tr>
+          <tr><td><strong style="color:var(--amber)">FP</strong></td><td>IoU &lt; 기준값(배경 오인) <b>또는</b> 중복 박스</td><td>오탐 — 헛것을 짚음</td></tr>
+          <tr><td><strong style="color:var(--red)">FN</strong></td><td>정답인데 못 찾음 / 신뢰도 미달</td><td>미검출 — 있는 객체를 놓침</td></tr>
+        </tbody>
+      </table>
+      <div class="note info"><span class="ic">연결</span><p>같은 객체에 박스가 여럿이면 <b>IoU 최고 하나만 TP</b>, 나머지는 <b>FP</b>입니다. §02의 NMS가 바로 이 중복 FP를 줄이는 장치라는 점이 여기서 이어집니다.</p></div>
+    </section>
+
+    <!-- ============ 05 PR 콘솔 ============ -->
+    <section id="s5">
+      <div class="eyebrow">Part 2 · 2단계 — 시소게임</div>
+      <h2>Precision · Recall 콘솔</h2>
+      <p><strong>신뢰도 임계값</strong>을 움직이며 Precision과 Recall이 어떻게 엇갈리는지, 그리고 그 궤적인 <strong>PR 곡선</strong>과 그 아래 면적인 <strong>AP</strong>가 어떻게 그려지는지 봅니다.</p>
+
+      <div class="formula" style="display:flex;gap:30px;flex-wrap:wrap">
+        <span>Precision = <span class="frac"><span class="num hl-tp">TP</span><span class="den"><span class="hl-tp">TP</span> + <span class="hl-fp">FP</span></span></span></span>
+        <span>Recall = <span class="frac"><span class="num hl-tp">TP</span><span class="den"><span class="hl-tp">TP</span> + <span class="hl-fn">FN</span></span></span></span>
+      </div>
+
+      <div class="pr-wrap">
+        <canvas class="pr-canvas" id="prCanvas" width="640" height="440"></canvas>
+        <div>
+          <div class="slider-row">
+            <label>신뢰도 임계값 (conf) <span class="val" id="confv">0.50</span></label>
+            <input type="range" id="confRange" min="0.05" max="0.98" step="0.01" value="0.5">
+          </div>
+          <div class="chips">
+            <div class="chip tp"><div class="lbl">TP</div><div class="num" id="cTP">0</div></div>
+            <div class="chip fp"><div class="lbl">FP</div><div class="num" id="cFP">0</div></div>
+            <div class="chip fn"><div class="lbl">FN</div><div class="num" id="cFN">0</div></div>
+          </div>
+          <div class="chips" style="margin-top:10px">
+            <div class="chip p"><div class="lbl">Precision</div><div class="num" id="cP">0.00</div></div>
+            <div class="chip r"><div class="lbl">Recall</div><div class="num" id="cR">0.00</div></div>
+          </div>
+          <div class="card" style="margin-top:12px;text-align:center">
+            <div class="k">Average Precision (면적)</div>
+            <div class="mono" style="font-size:34px;font-weight:700;color:var(--cyan);margin-top:4px" id="apVal">0.000</div>
+          </div>
+        </div>
+      </div>
+      <p class="footnote">시안 곡선 = 보간된 PR 곡선 · 음영 = AP 면적 · ◉ = 현재 임계값의 작동점 (총 정답 GT = 10)</p>
+
+      <div class="note info"><span class="ic">시소</span><p>임계값을 <b>낮추면</b> Recall↑ 이지만 FP가 늘어 Precision↓. <b>높이면</b> Precision↑ 이지만 놓쳐서 Recall↓. AP는 이 곡선 아래 면적으로, 임계값과 무관한 종합 점수입니다.</p></div>
+
+      <h3>이 그래프가 곧 ‘AP 그래프’입니다</h3>
+      <p>맞습니다 — <strong>위 PR 곡선과 AP는 별개의 그래프가 아닙니다.</strong> <strong>AP = PR 곡선 아래 면적</strong>이고, 콘솔의 음영이 바로 그 면적입니다. §06의 AP·mAP는 이 면적을 <em>IoU 임계값별·클래스별</em>로 반복해 평균 낸 것일 뿐이에요.</p>
+
+      <div class="note imp"><span class="ic">바로잡기</span><p><b>SSD는 2-stage가 아니라 YOLO와 같은 1-stage(Single Shot Detector)입니다.</b> 한 번의 통과로 예측하면 1-stage(YOLO·SSD·RetinaNet), 영역 제안을 먼저 하면 2-stage(Faster R-CNN 계열)예요. 그래서 PR 곡선을 실무에 적용할 때 진짜 갈리는 축은 ‘YOLO vs SSD’가 아니라 <b>‘1-stage vs 2-stage’</b>, 그리고 같은 1-stage 안에서의 <b>‘YOLO vs SSD 설계 차이’</b>입니다.</p></div>
+
+      <h3>PR 곡선을 실무에 적용할 때</h3>
+      <div class="grid2">
+        <div class="card"><div class="k">1-stage · YOLO / SSD</div><h4>배경이 압도적으로 많다</h4><p>그리드·앵커마다 예측이 쏟아져 <b>배경(음성) 후보가 양성보다 수백 배</b> 많습니다. 낮은 conf 구간에서 FP가 빠르게 늘어 <b>PR 곡선이 잘 무너집니다.</b> → <code>conf</code>·<code>NMS IoU</code> 튜닝과 <b>Focal Loss류 불균형 대응</b>이 핵심.</p></div>
+        <div class="card"><div class="k">2-stage · Faster R-CNN</div><h4>후보를 먼저 걸러둔다</h4><p>RPN이 배경을 1차로 제거해 후보 수가 적습니다. 같은 Recall에서 <b>Precision이 더 높게 유지</b>되고 특히 <b>고IoU(AP₇₅↑) 영역에 강함.</b> 대신 느려서 실시간엔 불리.</p></div>
+      </div>
+
+      <div class="note tip"><span class="ic">YOLO ↔ SSD</span><p>둘 다 1-stage지만 설계가 다릅니다. <b>SSD</b>는 여러 해상도의 피처맵 + default box(앵커)에서 예측해, 얕은 피처의 해상도 한계로 <b>소형 객체에 약하고</b> default box의 스케일·종횡비가 핵심 하이퍼파라미터입니다. <b>YOLO</b>는 그리드 기반에서 anchor-free·FPN/PAN·NMS-free로 진화해 속도/정확도 균형이 더 좋아졌고요. <b>소형 객체 AP(AP<sub>S</sub>)가 낮을 때</b> — SSD라면 입력 해상도↑·얕은 피처맵/FPN 보강·default box 재설계, YOLO라면 <code>imgsz</code>↑·P2 헤드 추가·증강 조절이 1순위 처방입니다.</p></div>
+    </section>
+
+    <!-- ============ 06 AP → mAP ============ -->
+    <section id="s6">
+      <div class="eyebrow">Part 2 · 3단계 — 최종 성적표</div>
+      <h2>AP에서 mAP로, 그리고 IoU 엄격도</h2>
+      <p><strong>AP</strong>는 한 클래스(예: '자동차')의 PR 곡선 아래 면적입니다. 모든 클래스의 AP를 평균 내면 최종 학점, <strong>mAP</strong>가 됩니다.</p>
+      <div class="formula">mAP = <span class="frac"><span class="num">1</span><span class="den">N</span></span> Σ AP<sub style="font-family:var(--mono)">i</sub> &nbsp;&nbsp;<span style="color:var(--ink-faint)">(N = 클래스 수)</span></div>
+
+      <h3>단일 IoU 기준 비교 — AP₅₀ · AP₇₅ · AP₉₀, 그리고 평균</h3>
+      <p>같은 모델이라도 <strong>IoU 합격선을 어디에 두느냐</strong>에 따라 점수가 크게 달라집니다. 막대 높이는 각 IoU에서의 대표 AP값입니다. 버튼으로 기준을 바꿔보세요.</p>
+      <div class="gates" id="gates"></div>
+      <div class="toggle-row">
+        <button class="tg on" id="ap50">AP₅₀</button>
+        <button class="tg" id="ap75">AP₇₅</button>
+        <button class="tg" id="ap90">AP₉₀</button>
+        <button class="tg" id="ap5095">AP₅₀:₉₅ (10칸 평균)</button>
+      </div>
+      <div class="ap-score"><span class="lbl" id="apScoreLbl">선택 기준</span><span class="big" id="apScoreVal">0.00</span></div>
+      <p class="footnote" id="gateDesc"></p>
+
+      <div class="grid3" style="margin-top:6px">
+        <div class="card"><div class="k">AP₅₀ · PASCAL VOC</div><p>IoU 0.5. 박스가 헐거워도 클래스만 맞으면 OK. 빠른 점검·프로토타이핑용.</p></div>
+        <div class="card"><div class="k">AP₇₅ · COCO 보조</div><p>IoU 0.75. 꽤 엄격. COCO가 AP₅₀과 함께 보고하는 정밀 지표.</p></div>
+        <div class="card"><div class="k">AP₅₀:₉₅ · COCO 주력</div><p>0.50~0.95를 0.05 단위 10번 평가해 평균. 단일 기준의 운에 좌우되지 않음.</p></div>
+      </div>
+
+      <h3 style="margin-top:2em">AP₅₀₋₉₅ vs mAP — 평균을 내는 '축'이 다르다</h3>
+      <p>둘 다 "평균"이라 헷갈리지만, <strong>어느 방향으로 평균을 내느냐</strong>가 다릅니다. 아래는 클래스(세로) × IoU 임계값(가로) 표의 AP값입니다. 버튼을 눌러 어디를 평균 내는지 보세요.</p>
+      <div class="matrix" id="apMatrix"></div>
+      <div class="toggle-row">
+        <button class="tg on" id="mxRow">AP₅₀:₉₅ — 한 클래스의 가로줄 평균</button>
+        <button class="tg" id="mxCol">mAP@0.5 — 한 IoU의 세로줄 평균</button>
+        <button class="tg" id="mxAll">COCO mAP — 표 전체 평균</button>
+      </div>
+      <p class="footnote" id="mxDesc"></p>
+      <div class="note info"><span class="ic">정리</span><p><b>AP₅₀₋₉₅</b>은 한 클래스를 <b>IoU 축</b>으로 평균(가로줄), <b>mAP</b>는 한 IoU에서 <b>클래스 축</b>으로 평균(세로줄)입니다. COCO의 대표 지표(보통 그냥 "mAP" 또는 "AP")는 <b>두 축을 모두 평균</b>한 표 전체 평균이라, 둘이 한 숫자로 합쳐져 더 헷갈립니다.</p></div>
+      <div class="note tip"><span class="ic">진단</span><p>크기별 <b>AP<sub>S</sub> / AP<sub>M</sub> / AP<sub>L</sub></b> 를 함께 보세요. <b>AP<sub>S</sub> 만 유독 낮다면</b> 소형 객체 문제 → §03의 FPN 고도화·고해상도 입력이 정답에 가깝습니다.</p></div>
+    </section>
+
+    <!-- ============ 07 실전 ============ -->
+    <section id="s7">
+      <div class="eyebrow">Part 3 · 실전 적용</div>
+      <h2>스마트 팩토리 — 안전장비 미착용 검출</h2>
+      <p>공장 CCTV로 작업자의 헬멧·안전조끼 착용을 실시간 탐지합니다. 여기서는 <strong>임계값 선택이 곧 안전 정책</strong>입니다. 슬라이더를 움직여 트레이드오프를 직접 느껴보세요.</p>
+
+      <div class="panel">
+        <div class="slider-row" style="max-width:420px">
+          <label>신뢰도 임계값 (conf_threshold) <span class="val" id="safev">0.20</span></label>
+          <input type="range" id="safeRange" min="0.1" max="0.9" step="0.05" value="0.2">
+        </div>
+        <div class="yard" id="yard"></div>
+        <div class="alarm">놓친 작업자 (FN): <b id="missN" style="color:var(--red)">0</b>명 &nbsp;·&nbsp; 오경보 (FP): <b id="fpN" style="color:var(--amber)">0</b>건</div>
+        <p class="footnote" id="safeMsg"></p>
+      </div>
+
+      <div class="note imp"><span class="ic">원칙</span><p>안전 시스템에선 <b>오경보(FP)보다 미검출(FN)이 치명적</b>입니다. 따라서 <b>Recall 극대화</b>가 최우선 — <code>conf_threshold</code>를 기본 0.25에서 <b>0.15~0.20으로 과감히 하향</b>해, 가끔 헛것을 잡더라도 작업자는 한 명도 놓치지 않습니다.</p></div>
+    </section>
+
+    <!-- ============ 08 정리 ============ -->
+    <section id="s8">
+      <div class="eyebrow">Wrap-up · 발표 핵심</div>
+      <h2>가져갈 메시지 셋</h2>
+      <div class="grid3">
+        <div class="card"><div class="k">01</div><h4>YOLO = 한 번에 회귀</h4><p>한 번의 추론으로 위치+클래스를 푼다. 그래서 빠르고, 글로벌 컨텍스트를 보고, 잘 일반화한다.</p></div>
+        <div class="card"><div class="k">02</div><h4>mAP = 쌓아 올린 성적표</h4><p>IoU·신뢰도 → P/R → AP → mAP. 현장 목표(속도냐 정밀도냐, FP냐 FN이냐)에 따라 지표와 임계값을 다르게 잡는다.</p></div>
+        <div class="card"><div class="k">03</div><h4>2026 = NMS-free 표준화</h4><p>트랜스포머의 전유물이던 NMS-free를 YOLOv10·YOLO26이 본가로 흡수. 실시간 검출의 기본기가 한 단계 올라섰다.</p></div>
+      </div>
+      <div class="summary" style="margin-top:24px">
+        <b>한눈 정리</b> — YOLO가 "무엇을·어디에"를 한 번에 답한다면, mAP는 그 답이 "얼마나 정확한가"를 채점합니다. 평가 체인은 <span class="mono" style="color:var(--cyan)">IoU·신뢰도 → Precision·Recall → PR곡선 → AP → mAP</span> 로 이어지며, 실무에선 <b>AP₅₀</b>로 방향을 잡고 <b>AP₅₀₋₉₅</b>로 정밀도를 끌어올린 뒤, 현장 리스크(FP↔FN)에 맞춰 임계값을 조율합니다.
+      </div>
+    </section>
+
+    <!-- ============ 09 부록 ============ -->
+    <section id="s9">
+      <div class="eyebrow">Appendix · 실무 레퍼런스</div>
+      <h2>검출 성능을 끌어올리는 튜닝 대상 총정리</h2>
+      <p>실제로 mAP를 높일 때 손대는 것들 — 데이터부터 배포까지, 모델링 기법·아키텍처·손실 함수·하이퍼파라미터·후처리를 단계별로 정리했습니다. <code>코드체</code>는 프레임워크에서 자주 만나는 인자명입니다.</p>
+      <table class="aptbl">
+        <thead><tr><th>튜닝 대상</th><th>무엇을 조절</th><th>효과 · 언제 쓰나</th></tr></thead>
+        <tbody>
+          <tr class="cat"><td colspan="3">① 데이터 · 증강</td></tr>
+          <tr><td>입력 해상도 <code>imgsz</code></td><td>학습/추론 이미지 크기</td><td>키우면 소형 객체↑, 속도·메모리↓</td></tr>
+          <tr><td>Mosaic / MixUp / Copy-Paste</td><td>이미지 합성 증강</td><td>다양성↑·과적합↓ (마지막 ~10 epoch엔 끔)</td></tr>
+          <tr><td>HSV · flip · scale · translate</td><td>색/기하 변형</td><td>조명·자세 변화 강건성</td></tr>
+          <tr><td>Albumentations 파이프라인</td><td>커스텀 증강(블러·노이즈 등)</td><td>도메인 특화 강건성</td></tr>
+          <tr><td>라벨 품질 · 클래스 균형</td><td>정답 정제 · 리샘플링/가중치</td><td>노이즈 학습 방지, 희소 클래스 보강</td></tr>
+
+          <tr class="cat"><td colspan="3">② 모델 아키텍처</td></tr>
+          <tr><td>백본 (Backbone)</td><td>CSPDarknet·ResNet·ConvNeXt·Swin</td><td>표현력 ↔ 속도 트레이드오프</td></tr>
+          <tr><td>넥 (Neck)</td><td>FPN · PAN · BiFPN</td><td>다중 스케일 융합 → 소형 객체↑</td></tr>
+          <tr><td>헤드 (Head)</td><td>decoupled · anchor-free</td><td>분류/회귀 분리, 구조 단순화</td></tr>
+          <tr><td>모델 크기</td><td>n / s / m / l / x</td><td>용량 ↔ 지연(latency)</td></tr>
+          <tr><td>고해상도 헤드 (P2)</td><td>얕은 피처 예측층 추가</td><td>작은 객체 전용 보강(번호판·먼 물체)</td></tr>
+
+          <tr class="cat"><td colspan="3">③ 손실 함수 · 라벨 할당</td></tr>
+          <tr><td>분류 손실</td><td>BCE · Focal · Varifocal</td><td>배경/전경 불균형 대응(1-stage 핵심)</td></tr>
+          <tr><td>박스 회귀 손실</td><td>CIoU · DIoU · GIoU · DFL</td><td>위치 정합 향상(AP₇₅↑)</td></tr>
+          <tr><td>라벨 할당</td><td>TAL · SimOTA · one-to-one</td><td>예측을 GT에 매칭 (one-to-one = NMS-free 핵심)</td></tr>
+          <tr><td>objectness 가중</td><td>전경/배경 비중</td><td>FP↔FN 균형 조절</td></tr>
+
+          <tr class="cat"><td colspan="3">④ 학습 하이퍼파라미터</td></tr>
+          <tr><td>옵티마이저 + <code>lr</code></td><td>SGD · AdamW · MuSGD</td><td>수렴 속도·안정성</td></tr>
+          <tr><td>LR 스케줄</td><td>cosine · warmup</td><td>초반 안정 · 후반 미세조정</td></tr>
+          <tr><td>weight decay · momentum</td><td>정규화 강도</td><td>과적합 억제</td></tr>
+          <tr><td>batch · epochs · patience</td><td>학습량 · 조기종료</td><td>자원 ↔ 수렴</td></tr>
+          <tr><td>EMA · AMP(혼합정밀)</td><td>가중치 평균 · 반정밀 학습</td><td>안정화 · 속도↑</td></tr>
+          <tr><td>전이학습 · <code>freeze</code></td><td>사전학습 활용 · 층 동결</td><td>소량 데이터에서 유리</td></tr>
+
+          <tr class="cat"><td colspan="3">⑤ 추론 · 후처리</td></tr>
+          <tr><td><code>conf</code> threshold</td><td>신뢰도 필터</td><td>Precision↔Recall 작동점 선택</td></tr>
+          <tr><td><code>NMS IoU</code> threshold</td><td>중복 제거 강도</td><td>밀집↔중복 (NMS-free 모델은 불요)</td></tr>
+          <tr><td>NMS 변형</td><td>Soft-NMS · DIoU-NMS</td><td>겹친 객체 보존</td></tr>
+          <tr><td>max detections</td><td>이미지당 최대 박스 수</td><td>과밀 장면 대응</td></tr>
+          <tr><td>TTA · multi-scale 추론</td><td>추론 시 증강</td><td>정확도↑ · 속도↓</td></tr>
+
+          <tr class="cat"><td colspan="3">⑥ 평가 · 진단</td></tr>
+          <tr><td>평가 IoU 기준</td><td>AP₅₀ · AP₇₅ · AP₅₀:₉₅</td><td>채점 엄격도 선택</td></tr>
+          <tr><td>크기별 분해</td><td>AP<sub>S</sub> / AP<sub>M</sub> / AP<sub>L</sub></td><td>약점(소형 객체 등) 진단</td></tr>
+          <tr><td>PR · F1 곡선 분석</td><td>운영 임계값 도출</td><td>배포용 <code>conf</code> 결정</td></tr>
+
+          <tr class="cat"><td colspan="3">⑦ 배포 · 최적화</td></tr>
+          <tr><td>양자화</td><td>INT8 · FP16</td><td>속도·메모리↓ (정확도 소폭↓)</td></tr>
+          <tr><td>TensorRT · ONNX 변환</td><td>그래프 컴파일</td><td>추론 가속</td></tr>
+          <tr><td>프루닝 · 증류(distillation)</td><td>경량화 · 지식 전이</td><td>엣지 배포</td></tr>
+        </tbody>
+      </table>
+      <div class="note tip"><span class="ic">진단 → 처방</span><p>막연히 다 건드리지 말고 <b>지표가 가리키는 곳부터</b>: <b>AP<sub>S</sub> 낮음</b> → ②넥(FPN)·P2 헤드·<code>imgsz</code>↑. <b>AP₇₅ 낮음(위치 부정확)</b> → ③박스 회귀 손실(CIoU/DFL). <b>FP 많음</b> → ⑤<code>conf</code>↑·③Focal Loss. <b>FN 많음(놓침)</b> → ⑤<code>conf</code>↓·①증강·희소 클래스 가중.</p></div>
+      <p style="margin-top:24px;font-family:var(--mono);font-size:12px;color:var(--ink-faint)">Weekly Paper #08 · YOLO &amp; mAP · 데이터 검증 2026.06</p>
+    </section>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $ = (s,p=document)=>p.querySelector(s);
+const $$ = (s,p=document)=>[...p.querySelectorAll(s)];
+const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+/* ---------- scroll progress + active nav + keyboard ---------- */
+const navlinks = $$('.rail a.nav');
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const p = h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
+  $('#scanline').style.width = p+'%';
+},{passive:true});
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){
+    navlinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+e.target.id));
+  }});
+},{rootMargin:'-45% 0px -50% 0px'});
+$$('section').forEach(s=>io.observe(s));
+document.addEventListener('keydown',(e)=>{
+  if(['INPUT','BUTTON','TEXTAREA'].includes(e.target.tagName)) return;
+  if(e.key!=='ArrowDown' && e.key!=='ArrowUp') return;
+  e.preventDefault();
+  const secs=$$('section'); const y=window.scrollY+window.innerHeight*0.4;
+  let idx=secs.findIndex(s=>s.offsetTop>y); if(idx===-1) idx=secs.length;
+  const target = e.key==='ArrowDown' ? secs[Math.min(idx,secs.length-1)] : secs[Math.max(idx-2,0)];
+  target && target.scrollIntoView({behavior:reduce?'auto':'smooth'});
+});
+
+/* ---------- hero reticle drift ---------- */
+if(!reduce){
+  const ret=$('#ret'); let t=0;
+  setInterval(()=>{ t+=0.02; ret.setAttribute('x', 600+Math.sin(t)*10); ret.setAttribute('y',120+Math.cos(t*0.8)*6); },40);
+}
+
+/* ---------- 2-stage vs 1-stage race ---------- */
+(function(){
+  const btn=$('#raceBtn'); const two=$$('.lane.two .pstep'); const one=$$('.lane.one .pstep');
+  const fps2=$('#fps2'), fps1=$('#fps1');
+  function clear(){ two.forEach(s=>s.classList.remove('on')); one.forEach(s=>s.classList.remove('on')); }
+  btn.addEventListener('click', ()=>{
+    btn.disabled=true; clear(); fps2.textContent='—'; fps1.textContent='—';
+    if(reduce){ two.forEach(s=>s.classList.add('on')); one.forEach(s=>s.classList.add('on')); fps2.textContent='~6'; fps1.textContent='~48'; btn.disabled=false; return; }
+    // 1-stage: single quick pulse
+    one[0].classList.add('on'); let f1=20;
+    const t1=setInterval(()=>{ fps1.textContent='~'+(f1+=Math.round(Math.random()*5)); if(f1>=48){clearInterval(t1); fps1.textContent='~48';} },50);
+    // 2-stage: sequential steps (slower)
+    let i=0; let f2=2;
+    const seq=setInterval(()=>{
+      if(i>0) two[i-1].classList.remove('on');
+      if(i<two.length){ two[i].classList.add('on'); i++; }
+      else { clearInterval(seq); two[two.length-1].classList.add('on'); btn.disabled=false; }
+    },420);
+    const t2=setInterval(()=>{ fps2.textContent='~'+(f2++); if(f2>=6){clearInterval(t2); fps2.textContent='~6';} },280);
+  });
+})();
+
+/* ---------- NMS demo ---------- */
+(function(){
+  const svg=$('#nmsSvg'); const W=440,H=240;
+  // ground-truth car region; overlapping detections with confidence
+  const dets=[
+    {x:150,y:70,w:160,h:96,c:0.92,keep:true},
+    {x:138,y:80,w:172,h:92,c:0.74},
+    {x:162,y:62,w:150,h:104,c:0.81},
+    {x:128,y:74,w:168,h:100,c:0.55},
+    {x:170,y:84,w:148,h:88,c:0.63},
+  ];
+  function box(d,{color,faded=false,width=1.6}){
+    const op=faded?0.18:1;
+    return `<g opacity="${op}">
+      <rect x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" rx="3" fill="none" stroke="${color}" stroke-width="${width}"/>
+      <rect x="${d.x}" y="${d.y-15}" width="40" height="14" fill="${color}" opacity="${faded?0.18:0.85}"/>
+      <text x="${d.x+4}" y="${d.y-4}" font-family="JetBrains Mono, monospace" font-size="9" fill="#04141a" font-weight="700">${d.c.toFixed(2)}</text>
+    </g>`;
+  }
+  const CAP={
+    all:'원본 예측 — 중복 박스 5개 (시안)',
+    nms:'NMS 적용 후 — 신뢰도 1위만 생존 (초록)',
+    free:'YOLO26 NMS-free — 처음부터 단일 출력 (보라)'
+  };
+  function render(mode){
+    let inner = `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+      <text x="20" y="28" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink-faint)">${CAP[mode]}</text>
+      <text x="222" y="195" font-family="JetBrains Mono, monospace" font-size="28" text-anchor="middle" opacity="0.25">🚗</text>`;
+    if(mode==='all'){ dets.forEach(d=>inner+=box(d,{color:'#37dcef',width:1.6})); }
+    else if(mode==='nms'){ dets.forEach(d=> inner += d.keep ? box(d,{color:'#46e3a3',width:2.6}) : box(d,{color:'#33425e',faded:true})); }
+    else { inner+=box(dets[0],{color:'#94a4f2',width:2.8}); }
+    svg.innerHTML=inner;
+  }
+  const applyBtn=$('#nmsApply'), freeBtn=$('#nmsFree'), resetBtn=$('#nmsReset');
+  let mode='all';
+  function setMode(m){
+    mode=m; render(m);
+    applyBtn.classList.toggle('ghost', m!=='nms');   // 활성 뷰의 버튼만 하이라이트
+    freeBtn.classList.toggle('ghost', m!=='free');
+    applyBtn.textContent = (m==='nms') ? '↺ 원본 보기' : 'NMS 적용';  // 두 스테이지 토글
+  }
+  applyBtn.addEventListener('click',()=> setMode(mode==='nms' ? 'all' : 'nms'));
+  freeBtn.addEventListener('click',()=> setMode('free'));
+  resetBtn.addEventListener('click',()=> setMode('all'));
+  setMode('all');
+})();
+
+/* ---------- NMS / IoU simulator ---------- */
+(function(){
+  const svg=$('#simSvg'); if(!svg) return; const VW=520, VH=320;
+  const GT=[ {x:70,y:120,w:130,h:110}, {x:315,y:90,w:125,h:120} ];
+  const PREDS=[
+    {id:'a1',x:74,y:124,w:124,h:102,conf:0.92,free:true},
+    {id:'a2',x:62,y:114,w:150,h:124,conf:0.74,free:false},
+    {id:'a3',x:84,y:132,w:116,h:92, conf:0.58,free:false},
+    {id:'b1',x:338,y:112,w:116,h:100,conf:0.86,free:true},
+    {id:'b2',x:305,y:82, w:140,h:134,conf:0.46,free:false},
+    {id:'b3',x:360,y:150,w:108,h:96, conf:0.62,free:false},
+    {id:'f1',x:205,y:245,w:92, h:58, conf:0.55,free:true},
+    {id:'f2',x:425,y:250,w:78, h:52, conf:0.34,free:false},
+  ];
+  function iou(a,b){
+    const ix=Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x));
+    const iy=Math.max(0,Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));
+    const inter=ix*iy, uni=a.w*a.h+b.w*b.h-inter; return uni>0?inter/uni:0;
+  }
+  let mode='nms';
+  const confEl=$('#confSim'), nmsEl=$('#nmsSim'), evalEl=$('#evalSim');
+
+  function rect(b,o){
+    let s=`<g opacity="${o.op}"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="3" fill="none" stroke="${o.stroke}" stroke-width="${o.width}" ${o.dash?`stroke-dasharray="${o.dash}"`:''}/>`;
+    if(o.label!==undefined){ s+=`<rect x="${b.x}" y="${b.y-15}" width="38" height="14" fill="${o.stroke}"/><text x="${b.x+4}" y="${b.y-4}" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700" fill="#04141a">${o.label}</text>`; }
+    return s+'</g>';
+  }
+  function draw(base, finalIds, verdict, matched){
+    let inner=`<rect x="0" y="0" width="${VW}" height="${VH}" fill="transparent"/>`;
+    GT.forEach((g,i)=>{ const fn=!matched[i]; const col=fn?'#fb6f7d':'#94a4f2';
+      inner+=`<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="4" fill="none" stroke="${col}" stroke-width="${fn?2.4:2}" stroke-dasharray="7 4"/>
+        <text x="${g.x+4}" y="${g.y-6}" font-family="JetBrains Mono, monospace" font-size="10" fill="${col}">GT${i+1}${fn?' · FN ⚠':''}</text>`;
+    });
+    base.forEach(b=>{
+      if(finalIds.has(b.id)){ const v=verdict[b.id];
+        inner+=rect(b,{stroke:v==='tp'?'#46e3a3':'#f7bb3f', width:2.4, op:1, label:b.conf.toFixed(2)});
+      } else { inner+=rect(b,{stroke:'#5d7099', width:1.2, dash:'3 4', op:0.28}); }
+    });
+    svg.innerHTML=inner;
+  }
+  function run(){
+    const cT=+confEl.value, nT=+nmsEl.value, eT=+evalEl.value;
+    $('#scv').textContent=cT.toFixed(2); $('#snv').textContent=nT.toFixed(2); $('#sev').textContent=eT.toFixed(2);
+    const base = PREDS.filter(p=> mode==='nms' ? true : p.free);
+    const kept = base.filter(p=> p.conf>=cT);
+    let finals;
+    if(mode==='nms'){
+      let pool=[...kept].sort((a,b)=>b.conf-a.conf); finals=[];
+      while(pool.length){ const top=pool.shift(); finals.push(top); pool=pool.filter(p=> iou(top,p)<=nT); }
+    } else { finals=[...kept]; }
+    const matched=new Array(GT.length).fill(false); const verdict={};
+    [...finals].sort((a,b)=>b.conf-a.conf).forEach(f=>{
+      let bi=-1,bv=0; GT.forEach((g,i)=>{ const v=iou(f,g); if(v>bv){bv=v;bi=i;} });
+      if(bi>=0 && bv>=eT && !matched[bi]){ matched[bi]=true; verdict[f.id]='tp'; } else verdict[f.id]='fp';
+    });
+    const finalIds=new Set(finals.map(f=>f.id));
+    let tp=0,fp=0; Object.values(verdict).forEach(v=> v==='tp'?tp++:fp++);
+    const fn=GT.length - matched.filter(Boolean).length;
+    draw(base, finalIds, verdict, matched);
+    $('#sTP').textContent=tp; $('#sFP').textContent=fp; $('#sFN').textContent=fn;
+    $('#sP').textContent=(tp+fp>0?tp/(tp+fp):1).toFixed(2);
+    $('#sR').textContent=(tp/GT.length).toFixed(2);
+    const dedup = mode==='nms' ? `NMS 후 <b>${finals.length}</b>` : `직접 출력 <b>${finals.length}</b>`;
+    $('#pipeStrip').innerHTML =
+      `<span class="ps">원본 <b>${base.length}</b></span><span class="ar">→</span>`+
+      `<span class="ps">Conf 통과 <b>${kept.length}</b></span><span class="ar">→</span>`+
+      `<span class="ps">${dedup}</span><span class="ar">→</span>`+
+      `<span class="ps">TP <b>${tp}</b> · FP <b>${fp}</b> · FN <b>${fn}</b></span>`;
+  }
+  function setMode(m){
+    mode=m;
+    $('#simNms').classList.toggle('on', m==='nms');
+    $('#simFree').classList.toggle('on', m==='free');
+    const off=(m==='free');
+    $('#nmsRow').classList.toggle('off', off);
+    nmsEl.disabled=off;
+    run();
+  }
+  [confEl,nmsEl,evalEl].forEach(el=>el.addEventListener('input',run));
+  $('#simNms').addEventListener('click',()=>setMode('nms'));
+  $('#simFree').addEventListener('click',()=>setMode('free'));
+  setMode('nms');
+})();
+
+/* ---------- IoU lab ---------- */
+(function(){
+  const svg=$('#iouSvg'); const VW=480,VH=320;
+  const gt={x:150,y:95,w:185,h:135};
+  const pred={x:215,y:140,baseW:185,baseH:135,scale:1};
+  let drag=null;
+  function predRect(){ return {x:pred.x,y:pred.y,w:pred.baseW*pred.scale,h:pred.baseH*pred.scale}; }
+  function iou(a,b){
+    const ix=Math.max(0, Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x));
+    const iy=Math.max(0, Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));
+    const inter=ix*iy; const uni=a.w*a.h+b.w*b.h-inter;
+    return {iou:uni>0?inter/uni:0, ix, iy, ax:Math.max(a.x,b.x), ay:Math.max(a.y,b.y), inter};
+  }
+  function draw(){
+    const p=predRect(); const r=iou(gt,p); const th=parseFloat($('#thRange').value);
+    const isTP = r.iou>=th;
+    let inner=`<rect x="0" y="0" width="${VW}" height="${VH}" fill="transparent"/>`;
+    // grid
+    for(let gx=0;gx<=VW;gx+=40) inner+=`<line x1="${gx}" y1="0" x2="${gx}" y2="${VH}" stroke="#13203a" stroke-width="1"/>`;
+    for(let gy=0;gy<=VH;gy+=40) inner+=`<line x1="0" y1="${gy}" x2="${VW}" y2="${gy}" stroke="#13203a" stroke-width="1"/>`;
+    // intersection fill
+    if(r.inter>0) inner+=`<rect x="${r.ax}" y="${r.ay}" width="${r.ix}" height="${r.iy}" fill="${isTP?'rgba(70,227,163,.28)':'rgba(247,187,63,.25)'}"/>`;
+    // GT box
+    inner+=`<rect x="${gt.x}" y="${gt.y}" width="${gt.w}" height="${gt.h}" fill="none" stroke="#94a4f2" stroke-width="2" stroke-dasharray="6 4"/>
+      <text x="${gt.x+4}" y="${gt.y-6}" font-family="JetBrains Mono, monospace" font-size="11" fill="#94a4f2">GT (정답)</text>`;
+    // Pred box
+    const col=isTP?'var(--green)':'var(--cyan)';
+    inner+=`<rect id="predRect" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="none" stroke="${col}" stroke-width="2.4"/>
+      <text x="${p.x+4}" y="${p.y+p.h+16}" font-family="JetBrains Mono, monospace" font-size="11" fill="${col}">예측 (드래그)</text>`;
+    svg.innerHTML=inner;
+    $('#iouVal').textContent=r.iou.toFixed(2);
+    $('#iouVal').style.color = isTP?'var(--green)':'var(--cyan)';
+    const v=$('#iouVerdict');
+    v.className='verdict '+(isTP?'tp':'fp');
+    v.textContent='판정: '+(isTP?'TP ✓ 정탐':'FP ✗ 오탐');
+  }
+  function toSvg(e){ const b=svg.getBoundingClientRect(); return {x:(e.clientX-b.left)/b.width*VW, y:(e.clientY-b.top)/b.height*VH}; }
+  svg.addEventListener('pointerdown',(e)=>{ const pt=toSvg(e); const p=predRect();
+    if(pt.x>=p.x-10&&pt.x<=p.x+p.w+10&&pt.y>=p.y-10&&pt.y<=p.y+p.h+10){ drag={dx:pt.x-pred.x,dy:pt.y-pred.y}; svg.setPointerCapture(e.pointerId);} });
+  svg.addEventListener('pointermove',(e)=>{ if(!drag) return; const pt=toSvg(e); const p=predRect();
+    pred.x=Math.max(0,Math.min(VW-p.w, pt.x-drag.dx)); pred.y=Math.max(0,Math.min(VH-p.h, pt.y-drag.dy)); draw(); });
+  svg.addEventListener('pointerup',()=>drag=null);
+  svg.addEventListener('pointercancel',()=>drag=null);
+  $('#szRange').addEventListener('input',(e)=>{ pred.scale=parseFloat(e.target.value); $('#szv').textContent=pred.scale.toFixed(2); draw(); });
+  $('#thRange').addEventListener('input',(e)=>{ $('#thv').textContent=parseFloat(e.target.value).toFixed(2); draw(); });
+  draw();
+})();
+
+/* ---------- PR console ---------- */
+(function(){
+  const GT=10;
+  // detections sorted by confidence desc: t=1 → true positive match
+  const DETS=[
+    {c:0.97,t:1},{c:0.94,t:1},{c:0.91,t:1},{c:0.88,t:1},{c:0.85,t:0},
+    {c:0.82,t:1},{c:0.78,t:1},{c:0.74,t:0},{c:0.70,t:1},{c:0.66,t:1},
+    {c:0.60,t:0},{c:0.55,t:1},{c:0.50,t:0},{c:0.45,t:0},{c:0.40,t:1},
+    {c:0.35,t:0},{c:0.30,t:0}
+  ];
+  // cumulative PR curve over sorted detections
+  const curve=[]; let tp=0,fp=0;
+  DETS.forEach(d=>{ if(d.t)tp++; else fp++; curve.push({r:tp/GT, p:tp/(tp+fp), c:d.c}); });
+  // all-point interpolated AP (VOC2010+)
+  function computeAP(){
+    const rec=curve.map(o=>o.r), prec=curve.map(o=>o.p);
+    const mrec=[0,...rec,1], mpre=[0,...prec,0];
+    for(let i=mpre.length-1;i>0;i--) mpre[i-1]=Math.max(mpre[i-1],mpre[i]);
+    let ap=0; for(let i=0;i<mrec.length-1;i++){ if(mrec[i+1]!==mrec[i]) ap+=(mrec[i+1]-mrec[i])*mpre[i+1]; }
+    return {ap, mrec, mpre};
+  }
+  const {ap, mrec, mpre}=computeAP();
+  $('#apVal').textContent=ap.toFixed(3);
+
+  const cv=$('#prCanvas'); const dpr=Math.min(window.devicePixelRatio||1,2);
+  function fit(){ cv.width=640*dpr; cv.height=440*dpr; }
+  fit();
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  const W=640,H=440, m={l:64,r:24,t:24,b:54};
+  const px=r=>m.l+r*(W-m.l-m.r);
+  const py=p=>H-m.b-p*(H-m.t-m.b);
+
+  function opPoint(th){
+    let t=0,f=0; for(const d of DETS){ if(d.c>=th){ if(d.t)t++; else f++; } }
+    const P = (t+f)>0 ? t/(t+f) : 1; const R=t/GT; const FN=GT-t;
+    return {t,f,FN,P,R};
+  }
+  function draw(th){
+    ctx.clearRect(0,0,W,H);
+    // axes grid
+    ctx.strokeStyle='#1d2c46'; ctx.fillStyle='#5d7099'; ctx.font='11px JetBrains Mono'; ctx.lineWidth=1;
+    for(let i=0;i<=10;i+=2){ const gx=px(i/10), gy=py(i/10);
+      ctx.beginPath(); ctx.moveTo(gx,m.t); ctx.lineTo(gx,H-m.b); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(m.l,gy); ctx.lineTo(W-m.r,gy); ctx.stroke();
+      ctx.fillText((i/10).toFixed(1), gx-9, H-m.b+18);
+      ctx.fillText((i/10).toFixed(1), m.l-30, gy+4);
+    }
+    ctx.fillStyle='#9fb0cf'; ctx.fillText('Recall →', W-110, H-m.b+38);
+    ctx.save(); ctx.translate(18,m.t+90); ctx.rotate(-Math.PI/2); ctx.fillText('Precision →',0,0); ctx.restore();
+
+    // AP fill (interpolated envelope)
+    ctx.beginPath(); ctx.moveTo(px(0),py(0));
+    for(let i=0;i<mrec.length;i++){ ctx.lineTo(px(mrec[i]),py(mpre[i])); }
+    ctx.lineTo(px(mrec[mrec.length-1]),py(0)); ctx.closePath();
+    ctx.fillStyle='rgba(55,220,239,.13)'; ctx.fill();
+
+    // interpolated curve (step)
+    ctx.beginPath(); ctx.strokeStyle='#37dcef'; ctx.lineWidth=2.4;
+    ctx.moveTo(px(mrec[0]),py(mpre[0]));
+    for(let i=1;i<mrec.length;i++){ ctx.lineTo(px(mrec[i]),py(mpre[i-1])); ctx.lineTo(px(mrec[i]),py(mpre[i])); }
+    ctx.stroke();
+
+    // raw points
+    ctx.fillStyle='#94a4f2'; curve.forEach(o=>{ ctx.beginPath(); ctx.arc(px(o.r),py(o.p),3,0,7); ctx.fill(); });
+
+    // operating point
+    const op=opPoint(th);
+    ctx.beginPath(); ctx.arc(px(op.R),py(op.P),8,0,7);
+    ctx.fillStyle='rgba(247,187,63,.25)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px(op.R),py(op.P),5,0,7);
+    ctx.fillStyle='#f7bb3f'; ctx.fill();
+    // guide lines
+    ctx.strokeStyle='rgba(247,187,63,.4)'; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(px(op.R),py(op.P)); ctx.lineTo(px(op.R),H-m.b); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px(op.R),py(op.P)); ctx.lineTo(m.l,py(op.P)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // readouts
+    $('#cTP').textContent=op.t; $('#cFP').textContent=op.f; $('#cFN').textContent=op.FN;
+    $('#cP').textContent=op.P.toFixed(2); $('#cR').textContent=op.R.toFixed(2);
+  }
+  $('#confRange').addEventListener('input',(e)=>{ const th=parseFloat(e.target.value); $('#confv').textContent=th.toFixed(2); draw(th); });
+  draw(0.5);
+})();
+
+/* ---------- AP gates: single-threshold comparison ---------- */
+(function(){
+  const g=$('#gates'); if(!g) return;
+  const thr=[0.50,0.55,0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95];
+  const ap =[0.85,0.82,0.78,0.73,0.67,0.59,0.49,0.37,0.22,0.08];
+  const avg = ap.reduce((a,b)=>a+b,0)/ap.length;
+  thr.forEach((v,i)=>{ const d=document.createElement('div'); d.className='gate'; d.dataset.i=i;
+    d.style.height=Math.max(8, ap[i]*100)+'%';
+    d.innerHTML=`<span class="gv">${ap[i].toFixed(2)}</span><span class="gl">${v.toFixed(2)}</span>`; g.appendChild(d); });
+  const gates=$$('.gate',g);
+  const MODES={
+    ap50:{idx:[0], val:ap[0], lbl:'AP₅₀', desc:'IoU 0.50 한 칸 — 가장 관대. 박스가 헐거워도 클래스만 맞으면 점수↑.'},
+    ap75:{idx:[5], val:ap[5], lbl:'AP₇₅', desc:'IoU 0.75 한 칸 — 꽤 엄격. 경계가 어긋나면 바로 깎입니다.'},
+    ap90:{idx:[8], val:ap[8], lbl:'AP₉₀', desc:'IoU 0.90 한 칸 — 거의 픽셀 단위 정합. 점수가 급락하는 게 정상입니다.'},
+    ap5095:{idx:[0,1,2,3,4,5,6,7,8,9], val:avg, lbl:'AP₅₀:₉₅', desc:'0.50~0.95 열 칸 평균 — 단일 기준의 운에 좌우되지 않는 COCO 주력 지표.'}
+  };
+  function setMode(m){
+    const cfg=MODES[m]; const set=new Set(cfg.idx);
+    gates.forEach((gt,i)=>gt.classList.toggle('lit', set.has(i)));
+    ['ap50','ap75','ap90','ap5095'].forEach(k=>$('#'+k).classList.toggle('on', k===m));
+    $('#apScoreLbl').textContent='선택 기준 = '+cfg.lbl;
+    $('#apScoreVal').textContent=cfg.val.toFixed(2);
+    $('#gateDesc').textContent=cfg.desc;
+  }
+  ['ap50','ap75','ap90','ap5095'].forEach(k=>$('#'+k).addEventListener('click',()=>setMode(k)));
+  setMode('ap50');
+})();
+
+/* ---------- class × IoU matrix (AP50-95 vs mAP) ---------- */
+(function(){
+  const host=$('#apMatrix'); if(!host) return;
+  const IOU=[0.50,0.55,0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95];
+  const CLASSES=[
+    {name:'자동차', ap:[0.92,0.90,0.86,0.80,0.73,0.64,0.53,0.40,0.24,0.09]},
+    {name:'사람',   ap:[0.85,0.82,0.77,0.70,0.62,0.52,0.41,0.30,0.17,0.06]},
+    {name:'신호등', ap:[0.70,0.66,0.60,0.53,0.44,0.35,0.25,0.16,0.08,0.02]},
+  ];
+  const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  let html='<table><thead><tr><th></th>';
+  IOU.forEach(v=>html+=`<th>${v.toFixed(2)}</th>`);
+  html+='<th>평균</th></tr></thead><tbody>';
+  CLASSES.forEach((c,ri)=>{
+    html+=`<tr><td class="rowh">${c.name}</td>`;
+    c.ap.forEach((v,ci)=>{ const bg=`rgba(55,220,239,${(v*0.55).toFixed(2)})`;
+      html+=`<td class="cell" data-r="${ri}" data-c="${ci}" style="background:${bg}">${v.toFixed(2)}</td>`; });
+    html+=`<td class="avg" data-rowavg="${ri}">${mean(c.ap).toFixed(2)}</td></tr>`;
+  });
+  html+='<tr><td class="rowh" style="color:var(--cyan)">열 평균</td>';
+  IOU.forEach((v,ci)=>{ const col=CLASSES.map(c=>c.ap[ci]); html+=`<td class="avg" data-colavg="${ci}">${mean(col).toFixed(2)}</td>`; });
+  const grand=mean(CLASSES.flatMap(c=>c.ap));
+  html+=`<td class="avg" data-grand="1">${grand.toFixed(2)}</td></tr></tbody></table>`;
+  host.innerHTML=html;
+  const cells=$$('.cell',host), rowAvg=$$('[data-rowavg]',host), colAvg=$$('[data-colavg]',host), grandCell=$('[data-grand]',host);
+  function clear(){ cells.forEach(c=>c.classList.remove('hl','dim')); rowAvg.forEach(c=>c.classList.add('off')); colAvg.forEach(c=>c.classList.add('off')); grandCell.classList.add('off'); }
+  function setMode(m){
+    clear();
+    ['mxRow','mxCol','mxAll'].forEach(k=>$('#'+k).classList.toggle('on', k==='mx'+m));
+    if(m==='Row'){
+      cells.forEach(c=> c.dataset.r==='0' ? c.classList.add('hl') : c.classList.add('dim'));
+      rowAvg[0].classList.remove('off');
+      $('#mxDesc').textContent='‘자동차’ 한 클래스를 IoU 0.50~0.95로 평균 → AP₅₀:₉₅ = '+rowAvg[0].textContent+' (가로줄 평균).';
+    } else if(m==='Col'){
+      cells.forEach(c=> c.dataset.c==='0' ? c.classList.add('hl') : c.classList.add('dim'));
+      colAvg[0].classList.remove('off');
+      $('#mxDesc').textContent='IoU 0.50에서 모든 클래스를 평균 → mAP@0.5 = '+colAvg[0].textContent+' (세로줄 평균).';
+    } else {
+      cells.forEach(c=>c.classList.add('hl'));
+      grandCell.classList.remove('off');
+      $('#mxDesc').textContent='표 전체(클래스 × IoU)를 평균 → COCO mAP = '+grandCell.textContent+' (두 축 모두 평균).';
+    }
+  }
+  $('#mxRow').addEventListener('click',()=>setMode('Row'));
+  $('#mxCol').addEventListener('click',()=>setMode('Col'));
+  $('#mxAll').addEventListener('click',()=>setMode('All'));
+  setMode('Row');
+})();
+
+/* ---------- safety sim ---------- */
+(function(){
+  const yard=$('#yard');
+  const workers=[ {c:0.92},{c:0.85},{c:0.74},{c:0.62},{c:0.55},{c:0.40},{c:0.30},{c:0.22} ];
+  const bg=[ {c:0.45},{c:0.28} ]; // background false detections
+  function render(th){
+    let html=''; let miss=0, fp=0;
+    workers.forEach((w,i)=>{
+      const ok=w.c>=th; if(!ok) miss++;
+      html+=`<div class="worker ${ok?'ok':'miss'}"><div class="face">👷</div>
+        <div class="c">conf ${w.c.toFixed(2)}</div>
+        <div class="st">${ok?'검출 ✓':'미검출 ⚠'}</div></div>`;
+    });
+    bg.forEach(b=>{
+      const alarm=b.c>=th; if(alarm) fp++;
+      html+=`<div class="worker bg ${alarm?'fp':''}"><div class="face">📦</div>
+        <div class="c">conf ${b.c.toFixed(2)}</div>
+        <div class="st">${alarm?'오경보 FP':'무시'}</div></div>`;
+    });
+    yard.innerHTML=html;
+    $('#missN').textContent=miss; $('#fpN').textContent=fp;
+    $('#safeMsg').textContent = miss===0
+      ? `임계값 ${th.toFixed(2)} — 작업자 전원 검출(Recall 1.0). 오경보 ${fp}건은 감수. ✅ 안전 정책에 부합.`
+      : `임계값 ${th.toFixed(2)} — 작업자 ${miss}명 미검출. 안전사고 리스크 발생 가능. ⚠ 임계값을 낮춰 Recall을 높이세요.`;
+  }
+  $('#safeRange').addEventListener('input',(e)=>{ const th=parseFloat(e.target.value); $('#safev').textContent=th.toFixed(2); render(th); });
+  render(0.2);
+})();
+</script>
+</body>
+</html>
