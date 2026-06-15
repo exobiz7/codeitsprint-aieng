@@ -695,6 +695,7 @@
           <tr><td>헤드 (Head)</td><td>decoupled · anchor-free</td><td>분류/회귀 분리, 구조 단순화</td></tr>
           <tr><td>모델 크기</td><td>n / s / m / l / x</td><td>용량 ↔ 지연(latency)</td></tr>
           <tr><td>고해상도 헤드 (P2)</td><td>얕은 피처 예측층 추가</td><td>작은 객체 전용 보강(번호판·먼 물체)</td></tr>
+          <tr><td>앵커 자동 최적화</td><td>k-means auto-anchor</td><td>앵커 기반 모델에서 데이터에 맞춰 앵커 재계산</td></tr>
 
           <tr class="cat"><td colspan="3">③ 손실 함수 · 라벨 할당</td></tr>
           <tr><td>분류 손실</td><td>BCE · Focal · Varifocal</td><td>배경/전경 불균형 대응(1-stage 핵심)</td></tr>
@@ -708,7 +709,9 @@
           <tr><td>weight decay · momentum</td><td>정규화 강도</td><td>과적합 억제</td></tr>
           <tr><td>batch · epochs · patience</td><td>학습량 · 조기종료</td><td>자원 ↔ 수렴</td></tr>
           <tr><td>EMA · AMP(혼합정밀)</td><td>가중치 평균 · 반정밀 학습</td><td>안정화 · 속도↑</td></tr>
-          <tr><td>전이학습 · <code>freeze</code></td><td>사전학습 활용 · 층 동결</td><td>소량 데이터에서 유리</td></tr>
+          <tr><td>전이학습 · <code>freeze</code></td><td>Freeze / Partial / Full (아래 표 참조)</td><td>도메인 격차·데이터 양에 맞춰 선택</td></tr>
+          <tr><td>gradient accumulation</td><td>여러 스텝 누적 후 1회 갱신</td><td>메모리 한계에서 유효 배치↑</td></tr>
+          <tr><td>사전학습 가중치 출처</td><td>ImageNet · COCO · 도메인 사전학습</td><td>도메인 가까울수록 수렴↑·데이터 절약</td></tr>
 
           <tr class="cat"><td colspan="3">⑤ 추론 · 후처리</td></tr>
           <tr><td><code>conf</code> threshold</td><td>신뢰도 필터</td><td>Precision↔Recall 작동점 선택</td></tr>
@@ -716,19 +719,49 @@
           <tr><td>NMS 변형</td><td>Soft-NMS · DIoU-NMS</td><td>겹친 객체 보존</td></tr>
           <tr><td>max detections</td><td>이미지당 최대 박스 수</td><td>과밀 장면 대응</td></tr>
           <tr><td>TTA · multi-scale 추론</td><td>추론 시 증강</td><td>정확도↑ · 속도↓</td></tr>
+          <tr><td>NMS 적용 범위</td><td>class-agnostic ↔ per-class</td><td>겹친 다른 클래스 박스 처리 방식</td></tr>
+          <tr><td>SAHI 슬라이스 추론</td><td>큰 이미지를 타일로 쪼개 추론</td><td>항공·번호판 등 초소형 객체↑</td></tr>
 
-          <tr class="cat"><td colspan="3">⑥ 평가 · 진단</td></tr>
+          <tr class="cat"><td colspan="3">⑥ 평가 · 진단 (정량)</td></tr>
           <tr><td>평가 IoU 기준</td><td>AP₅₀ · AP₇₅ · AP₅₀:₉₅</td><td>채점 엄격도 선택</td></tr>
           <tr><td>크기별 분해</td><td>AP<sub>S</sub> / AP<sub>M</sub> / AP<sub>L</sub></td><td>약점(소형 객체 등) 진단</td></tr>
           <tr><td>PR · F1 곡선 분석</td><td>운영 임계값 도출</td><td>배포용 <code>conf</code> 결정</td></tr>
 
-          <tr class="cat"><td colspan="3">⑦ 배포 · 최적화</td></tr>
+          <tr class="cat"><td colspan="3">⑦ 시각적 진단 · 검증</td></tr>
+          <tr><td>Confusion Matrix</td><td>클래스×클래스(+배경) 정규화 행렬</td><td>어느 클래스끼리 혼동·배경 오탐/미검출 패턴</td></tr>
+          <tr><td>Grad-CAM · Eigen-CAM · D-RISE</td><td>판단 근거 히트맵(설명)</td><td>모델이 ‘어디를 보고’ 맞췄는지 해석·검증</td></tr>
+          <tr><td>에러 유형 분해 (TIDE)</td><td>Cls·Loc·Dupe·Bkg·Miss 기여도</td><td>어느 에러에서 점수를 잃는지 정밀 진단</td></tr>
+          <tr><td>예측 오버레이 · FP/FN 갤러리</td><td>GT↔Pred 비교 · 최악 케이스 모음</td><td>라벨 오류·체계적 실패를 눈으로 포착</td></tr>
+          <tr><td>임베딩 t-SNE / UMAP</td><td>특징 공간 2D 투영</td><td>클래스 군집·혼동·이상치 파악</td></tr>
+
+          <tr class="cat"><td colspan="3">⑧ 배포 · 최적화</td></tr>
           <tr><td>양자화</td><td>INT8 · FP16</td><td>속도·메모리↓ (정확도 소폭↓)</td></tr>
           <tr><td>TensorRT · ONNX 변환</td><td>그래프 컴파일</td><td>추론 가속</td></tr>
           <tr><td>프루닝 · 증류(distillation)</td><td>경량화 · 지식 전이</td><td>엣지 배포</td></tr>
         </tbody>
       </table>
       <div class="note tip"><span class="ic">진단 → 처방</span><p>막연히 다 건드리지 말고 <b>지표가 가리키는 곳부터</b>: <b>AP<sub>S</sub> 낮음</b> → ②넥(FPN)·P2 헤드·<code>imgsz</code>↑. <b>AP₇₅ 낮음(위치 부정확)</b> → ③박스 회귀 손실(CIoU/DFL). <b>FP 많음</b> → ⑤<code>conf</code>↑·③Focal Loss. <b>FN 많음(놓침)</b> → ⑤<code>conf</code>↓·①증강·희소 클래스 가중.</p></div>
+      <h3 style="margin-top:2em">전이학습 전략 — Freeze · Partial · Full, 그리고 LLRD</h3>
+      <p>사전학습 모델을 <strong>어디까지 다시 학습할지</strong>는 <strong>도메인 격차</strong>와 <strong>데이터 양</strong>으로 결정합니다.</p>
+      <table class="aptbl">
+        <thead><tr><th>전략</th><th>무엇을 학습</th><th>언제 · 주의</th></tr></thead>
+        <tbody>
+          <tr><td>Freeze (동결)</td><td>백본 고정, <b>헤드만</b> 학습</td><td>데이터 적고 도메인이 사전학습과 비슷할 때. 빠르고 메모리↓ — 대신 표현력 부족 시 과소적합.</td></tr>
+          <tr><td>Partial (부분)</td><td>앞쪽 층 동결 + <b>뒤쪽 층·헤드</b> 학습</td><td>중간 규모·중간 격차. 점진적 해동(progressive unfreezing)으로 안정적 적응.</td></tr>
+          <tr><td>Full (전체)</td><td><b>전 층</b> 미세조정</td><td>데이터 충분·도메인 격차 클 때 최고 성능. 단 불안정·파국적 망각 위험 → 낮은 LR·warmup·EMA·<b>LLRD</b> 필수.</td></tr>
+        </tbody>
+      </table>
+      <div class="note imp"><span class="ic">LLRD 핵심</span><p><b>Full 미세조정</b>에서 모든 층에 같은 LR을 주면 저수준(엣지·질감) 사전지식까지 망가지기 쉽습니다. <b>LLRD(Layer-wise LR Decay)</b>는 <b>입력에 가까운 층일수록 LR을 작게, 출력(헤드)에 가까울수록 크게</b> 줍니다(예: 층마다 ×0.9씩 감쇠). 일반 특징은 보존하고 태스크 특징만 빠르게 적응시키는 방식으로, ViT·Swin·BERT 등 <b>대형 백본 미세조정의 사실상 표준</b>이며 ‘discriminative fine-tuning’이라고도 합니다. warmup·낮은 LR·EMA를 곁들이면 파국적 망각(catastrophic forgetting)을 더 효과적으로 막습니다.</p></div>
+
+      <h3 style="margin-top:2em">도메인별 튜닝 포인트</h3>
+      <div class="grid2">
+        <div class="card"><div class="k">검출 + OCR · 번호판/영수증/문서</div><p>검출은 <b>Recall 우선</b>(놓치면 OCR 자체가 불가) + 박스에 <b>여유 패딩</b>·<b>기울기 보정(perspective rectification)</b> 후 인식. 위치 정밀(<b>AP₇₅</b>)이 OCR 정확도에 직결 → 박스 회귀 손실·고해상도 중요. 작게 찍히면 <b>SAHI 타일링</b>. 최종 평가는 mAP가 아니라 <b>엔드투엔드 인식률(CER/WER)</b>로.</p></div>
+        <div class="card"><div class="k">불량 검출 · 제조/품질</div><p>결함은 작고 희소 → <b>소형 객체 처방 + 극단적 불균형 대응</b>(Focal·oversampling). <b>FN(불량 놓침)이 치명</b> → conf 하향·Recall 우선. 데이터 부족 시 <b>합성 결함(Copy-Paste)</b>·이상탐지(PatchCore 등) 병행, 미세 결함엔 <b>고해상도·타일링</b> 필수.</p></div>
+        <div class="card"><div class="k">헬스케어 · 의료영상</div><p>병변 <b>FN 치명</b> → 민감도(Recall) 우선, 그러나 FP 비용도 커 운영점 신중. 라벨 비싸고 적음 → 전이학습·강증강·교차검증·도메인 사전학습(RadImageNet). <b>보정(calibration)·불확실성·설명가능성(Grad-CAM)</b>으로 임상 신뢰 확보, 기관별 분포 변화 주의.</p></div>
+        <div class="card"><div class="k">화장품 · 뷰티케어</div><p>피부 상태·제품 검출은 <b>조명·색 변화</b>가 커 화이트밸런스·색 항상성 증강과 <b>다양한 피부톤 데이터(공정성)</b>가 필수. 주름·모공 등 미세 텍스처는 고해상도. 패키지/로고 인식은 <b>fine-grained 분류</b> 결합(이커머스 연계).</p></div>
+        <div class="card"><div class="k">이커머스 · 마케팅</div><p>상품·속성 인식은 <b>롱테일(클래스 불균형)</b> → 계층 분류·리샘플링. 브랜드/로고·콘텐츠 모더레이션은 <b>오탐 비용 큼 → Precision 우선</b>. 시각 검색·추천은 <b>임베딩(retrieval) 결합</b>·속도 중요, 배너 자동 태깅은 <b>멀티라벨 + OCR</b> 결합.</p></div>
+      </div>
+
       <p style="margin-top:24px;font-family:var(--mono);font-size:12px;color:var(--ink-faint)">Weekly Paper #08 · YOLO &amp; mAP · 데이터 검증 2026.06</p>
     </section>
   </main>
