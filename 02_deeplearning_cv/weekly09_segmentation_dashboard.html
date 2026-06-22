@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>위클리 페이퍼 #9 · 이미지 세그멘테이션</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --bg:#070b13; --bg2:#0a1019; --panel:#0e1726; --panelraised:#142136;
+    --line:#1d2c46; --line2:#27395a;
+    --ink:#e9f0fb; --ink-dim:#9fb0cf; --ink-faint:#5d7099;
+    --cyan:#37dcef; --cyan-deep:#0c6b80; --cyan-glow:rgba(55,220,239,.16);
+    --amber:#f7bb3f; --green:#46e3a3; --red:#fb6f7d; --violet:#94a4f2; --pink:#f59ce0;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --sans:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;
+    --rail-w:218px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(55,220,239,.06), transparent 60%),
+      radial-gradient(900px 600px at -10% 30%, rgba(148,164,242,.05), transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;}
+  ::selection{background:rgba(55,220,239,.28); color:#fff}
+  a{color:var(--cyan); text-decoration:none}
+  #scanline{position:fixed; top:0; left:0; height:2px; width:0%; background:linear-gradient(90deg,var(--cyan),var(--violet)); z-index:90; box-shadow:0 0 12px var(--cyan-glow);}
+
+  .shell{display:flex; min-height:100vh}
+  .rail{position:fixed; top:0; left:0; width:var(--rail-w); height:100vh; padding:26px 16px; border-right:1px solid var(--line);
+    background:linear-gradient(180deg,var(--bg2),rgba(10,16,25,.4)); display:flex; flex-direction:column; gap:4px; z-index:80; backdrop-filter:blur(6px);}
+  .rail .brand{font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--cyan); text-transform:uppercase}
+  .rail .brand b{color:var(--ink); display:block; font-size:13px; letter-spacing:.04em; margin-top:5px; font-weight:700}
+  .rail nav{margin-top:16px; display:flex; flex-direction:column; gap:2px}
+  .rail a.nav{display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:8px; color:var(--ink-faint); font-size:13px; font-weight:500; transition:.18s; border:1px solid transparent}
+  .rail a.nav .idx{font-family:var(--mono); font-size:10px; color:var(--ink-faint); width:18px}
+  .rail a.nav:hover{color:var(--ink-dim); background:rgba(255,255,255,.02)}
+  .rail a.nav.active{color:var(--ink); background:var(--cyan-glow); border-color:rgba(55,220,239,.3)}
+  .rail a.nav.active .idx{color:var(--cyan)}
+  .rail .foot{margin-top:auto; font-family:var(--mono); font-size:10px; color:var(--ink-faint); letter-spacing:.05em; line-height:1.7}
+
+  main{margin-left:var(--rail-w); flex:1; padding:0 clamp(20px,5vw,84px)}
+  section{max-width:1040px; margin:0 auto; padding:90px 0 58px; scroll-margin-top:10px}
+  section + section{border-top:1px solid var(--line)}
+
+  .eyebrow{font-family:var(--mono); font-size:11.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--cyan); display:flex; align-items:center; gap:10px; margin:0 0 14px}
+  .eyebrow::before{content:""; width:26px; height:1px; background:var(--cyan); opacity:.7}
+  h1{font-size:clamp(34px,5vw,58px); line-height:1.05; font-weight:800; letter-spacing:-.02em; margin:.1em 0 .25em}
+  h2{font-size:clamp(25px,3.2vw,36px); font-weight:800; letter-spacing:-.015em; margin:0 0 .5em; line-height:1.15}
+  h3{font-size:19px; font-weight:700; margin:1.6em 0 .5em; color:var(--ink)}
+  p{color:var(--ink-dim); margin:.5em 0}
+  strong{color:var(--ink); font-weight:700}
+  em{color:var(--ink); font-style:normal; font-weight:600}
+  .lead{font-size:18px; color:var(--ink-dim)}
+  code{font-family:var(--mono); font-size:.88em; background:rgba(55,220,239,.1); color:var(--cyan); padding:.12em .42em; border-radius:5px}
+  .mono{font-family:var(--mono)}
+
+  .hero{min-height:100vh; display:flex; flex-direction:column; justify-content:center; position:relative; max-width:none; padding:0 clamp(20px,5vw,84px); overflow:hidden;
+    margin-left:calc(-1*clamp(20px,5vw,84px)); margin-right:calc(-1*clamp(20px,5vw,84px));
+    background:radial-gradient(1100px 640px at 80% 6%, rgba(55,220,239,.14), transparent 56%), radial-gradient(900px 620px at 4% 82%, rgba(148,164,242,.12), transparent 55%), linear-gradient(180deg,#05080f 0%,#070d18 58%,var(--bg) 100%);}
+  .hero + section{border-top:none}
+  .hero::after{content:""; position:absolute; inset:0; pointer-events:none; z-index:0; background:linear-gradient(100deg,transparent 42%,rgba(55,220,239,.10) 50%,transparent 58%); transform:translateX(-60%);}
+  .reticle{position:absolute; inset:0; pointer-events:none; opacity:.5; z-index:0}
+  .hero-inner{position:relative; z-index:1; max-width:1040px; margin:0 auto; width:100%}
+  .hero h1{background:linear-gradient(102deg,#eef7ff 0%,#74e7f4 46%,#aab6ff 100%); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  @keyframes heroUp{from{opacity:0; transform:translateY(20px)} to{opacity:1; transform:translateY(0)}}
+  @keyframes sweep{0%{transform:translateX(-60%)} 100%{transform:translateX(120%)}}
+  @media (prefers-reduced-motion:no-preference){
+    .hero::after{animation:sweep 2.8s ease-in-out .35s 1 forwards}
+    .hero-inner > *{opacity:0; animation:heroUp .72s cubic-bezier(.2,.7,.2,1) forwards}
+    .hero-inner > .eyebrow{animation-delay:.06s} .hero-inner > h1{animation-delay:.2s}
+    .hero-inner > .lead{animation-delay:.4s} .hero-inner > .q-grid{animation-delay:.54s}
+    .hero-inner > .tldr{animation-delay:.68s} .hero-inner > .scrollcue{animation-delay:.82s}
+  }
+  .q-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:30px; max-width:760px}
+  .q{border:1px solid var(--line2); border-radius:12px; padding:16px 18px; background:linear-gradient(160deg,var(--panel),rgba(14,23,38,.3))}
+  .q .qn{font-family:var(--mono); font-size:11px; color:var(--cyan); letter-spacing:.12em}
+  .q p{margin:.4em 0 0; color:var(--ink); font-weight:600; font-size:15px; line-height:1.4}
+  .tldr{margin-top:26px; max-width:780px; border-left:2px solid var(--cyan); padding:6px 0 6px 18px; color:var(--ink-dim); font-size:15.5px}
+  .tldr b{color:var(--cyan)}
+  .scrollcue{margin-top:36px; font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--ink-faint); display:flex; align-items:center; gap:10px; text-transform:uppercase}
+  .scrollcue .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan); animation:blink 1.6s infinite}
+  @keyframes blink{0%,100%{opacity:.25}50%{opacity:1; box-shadow:0 0 10px var(--cyan)}}
+
+  .panel{background:linear-gradient(165deg,var(--panel),rgba(10,16,25,.35)); border:1px solid var(--line); border-radius:14px; padding:22px 24px; margin:18px 0}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px}
+  .card .k{font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--cyan); text-transform:uppercase}
+  .card h4{margin:.5em 0 .3em; font-size:16px; font-weight:700}
+  .card p{font-size:14px; margin:.2em 0 0}
+
+  .note{border-radius:12px; padding:15px 18px; margin:18px 0; font-size:14.5px; border:1px solid; display:flex; gap:13px; align-items:flex-start}
+  .note .ic{font-family:var(--mono); font-weight:700; font-size:12px; padding:2px 8px; border-radius:6px; white-space:nowrap; margin-top:1px}
+  .note.tip{background:rgba(70,227,163,.06); border-color:rgba(70,227,163,.28)} .note.tip .ic{background:rgba(70,227,163,.16); color:var(--green)}
+  .note.imp{background:rgba(247,187,63,.06); border-color:rgba(247,187,63,.28)} .note.imp .ic{background:rgba(247,187,63,.16); color:var(--amber)}
+  .note.info{background:rgba(55,220,239,.05); border-color:rgba(55,220,239,.24)} .note.info .ic{background:rgba(55,220,239,.14); color:var(--cyan)}
+  .note p{margin:0; color:var(--ink-dim)}
+  .summary{background:linear-gradient(120deg,rgba(55,220,239,.08),rgba(148,164,242,.05)); border:1px solid rgba(55,220,239,.28); border-radius:12px; padding:16px 20px; margin:22px 0; font-size:14.5px}
+  .summary b{color:var(--cyan)}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); font-weight:500}
+  td strong{color:var(--ink)} td:first-child{color:var(--ink); font-weight:600}
+  tbody tr:hover{background:rgba(255,255,255,.015)}
+
+  .formula{font-family:var(--mono); background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:14px 0; color:var(--ink); font-size:15px; overflow-x:auto}
+  .formula .frac{display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px}
+  .formula .frac .num{border-bottom:1.5px solid var(--ink-faint); padding:0 6px 2px}
+  .formula .frac .den{padding:2px 6px 0}
+
+  .btn{font-family:var(--mono); font-size:12.5px; letter-spacing:.04em; cursor:pointer; border-radius:9px; padding:10px 18px; background:var(--cyan); color:#04141a; border:1px solid var(--cyan); font-weight:700; transition:.15s}
+  .btn:hover{filter:brightness(1.12); box-shadow:0 0 18px var(--cyan-glow)}
+  .btn.ghost{background:transparent; color:var(--ink-dim); border-color:var(--line2)}
+  .btn.ghost:hover{color:var(--ink); border-color:var(--cyan); box-shadow:none}
+  .btn:disabled{opacity:.4; cursor:default; box-shadow:none; filter:none}
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px}
+  .toggle-row{display:flex; gap:10px; margin:16px 0 6px; flex-wrap:wrap}
+  .tg{font-family:var(--mono); font-size:12px; padding:9px 16px; border-radius:9px; cursor:pointer; border:1px solid var(--line2); color:var(--ink-dim); background:transparent; transition:.15s}
+  .tg.on{background:var(--cyan); color:#04141a; border-color:var(--cyan); font-weight:700}
+
+  .slider-row{margin:16px 0}
+  .slider-row label{display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; color:var(--ink-dim); margin-bottom:6px}
+  .slider-row label .val{color:var(--cyan); font-weight:700}
+  input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:5px; background:var(--line2); outline:none; cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:17px; height:17px; border-radius:50%; background:var(--cyan); border:2px solid #04141a; box-shadow:0 0 10px var(--cyan-glow); cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:15px; height:15px; border-radius:50%; background:var(--cyan); border:2px solid #04141a; cursor:pointer}
+
+  .stage{background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:8px}
+  .demo-svg{width:100%; height:auto; display:block; border-radius:8px; background:var(--bg2); border:1px solid var(--line)}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--ink-dim)}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:14px; height:10px; border-radius:2px; display:inline-block}
+  .twocol{display:grid; grid-template-columns:1.2fr 1fr; gap:20px; align-items:center; margin-top:8px}
+  .footnote{font-size:12.5px; color:var(--ink-faint); margin-top:8px; font-family:var(--mono)}
+
+  .ladder{display:flex; flex-direction:column; gap:6px; margin:14px 0}
+  .rung{display:flex; align-items:center; gap:12px; padding:11px 15px; border:1px solid var(--line); border-radius:10px; background:var(--bg2); cursor:pointer; transition:.18s}
+  .rung:hover{border-color:var(--line2)}
+  .rung.on{border-color:var(--cyan); background:var(--cyan-glow)}
+  .rung .num{font-family:var(--mono); font-size:12px; color:var(--cyan); width:20px}
+  .rung .nm{font-weight:700; font-size:14.5px; min-width:150px}
+  .rung .ds{font-size:12.5px; color:var(--ink-dim)}
+
+  .mbar{margin:8px 0}
+  .mbar .top{display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; margin-bottom:4px}
+  .mbar .track{height:14px; border-radius:7px; background:var(--bg2); border:1px solid var(--line); overflow:hidden}
+  .mbar .fill{height:100%; border-radius:7px; transition:width .12s}
+  .mbar.iou .fill{background:linear-gradient(90deg,var(--cyan-deep),var(--cyan))} .mbar.iou .v{color:var(--cyan)}
+  .mbar.dice .fill{background:linear-gradient(90deg,#7a5bb0,var(--violet))} .mbar.dice .v{color:var(--violet)}
+
+  /* appendix table */
+  .aptbl tr.cat td{background:var(--cyan-glow); color:var(--cyan); font-family:var(--mono); font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase; font-weight:700; padding:9px 14px; border-bottom:1px solid var(--line2)}
+  .aptbl td:first-child{color:var(--ink); font-weight:600; white-space:nowrap}
+
+  /* workflow timeline */
+  .vflow{position:relative; margin:16px 0 8px; padding-left:4px}
+  .vstep{display:flex; gap:14px; align-items:flex-start; padding:8px 0; position:relative}
+  .vstep:not(:last-child)::before{content:""; position:absolute; left:13px; top:34px; bottom:-8px; width:2px; background:var(--line2)}
+  .vstep .fnum{flex:none; width:28px; height:28px; border-radius:50%; background:var(--cyan-glow); color:var(--cyan); border:1px solid rgba(55,220,239,.4); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:13px; z-index:1}
+  .vstep .fbody{padding-top:3px}
+  .vstep .fbody b{color:var(--ink); font-size:14.5px}
+  .vstep .fbody p{margin:2px 0 0; font-size:13px; color:var(--ink-dim); line-height:1.5}
+  .vstep.hi .fnum{background:rgba(55,220,239,.2)}
+  .vstep.ok .fnum{background:rgba(70,227,163,.16); color:var(--green); border-color:rgba(70,227,163,.4)}
+
+  @media (max-width:900px){
+    .rail{position:static; width:auto; height:auto; flex-direction:row; flex-wrap:wrap; align-items:center; border-right:none; border-bottom:1px solid var(--line)}
+    .rail nav{flex-direction:row; flex-wrap:wrap; margin-top:0; gap:4px} .rail .brand, .rail .foot{width:100%} .rail .foot{display:none}
+    main{margin-left:0}
+    .twocol,.grid2,.grid3,.q-grid{grid-template-columns:1fr}
+    .rung .nm{min-width:0}
+  }
+  @media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important; scroll-behavior:auto !important} }
+</style>
+</head>
+<body>
+<div id="scanline"></div>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">WEEKLY PAPER · 09<b>이미지 세그멘테이션</b></div>
+    <nav>
+      <a class="nav" href="#s0"><span class="idx">00</span>들어가며</a>
+      <a class="nav" href="#s1"><span class="idx">01</span>분할의 지형도</a>
+      <a class="nav" href="#s2"><span class="idx">02</span>인식 사다리</a>
+      <a class="nav" href="#s3"><span class="idx">03</span>FCN · 합성곱화</a>
+      <a class="nav" href="#s4"><span class="idx">04</span>전치 합성곱</a>
+      <a class="nav" href="#s5"><span class="idx">05</span>스킵 · U-Net</a>
+      <a class="nav" href="#s6"><span class="idx">06</span>RoI Align</a>
+      <a class="nav" href="#s7"><span class="idx">07</span>IoU vs Dice</a>
+      <a class="nav" href="#s8"><span class="idx">08</span>손실 함수</a>
+      <a class="nav" href="#s9"><span class="idx">09</span>최신 · 실전</a>
+      <a class="nav" href="#s10"><span class="idx">10</span>핵심 정리</a>
+      <a class="nav" href="#s11"><span class="idx">11</span>부록 · 튜닝</a>
+      <a class="nav" href="#s12"><span class="idx">12</span>심화 · Q&amp;A</a>
+    </nav>
+    <div class="foot">↑ / ↓ 섹션 이동<br>토글 · 슬라이더로 시연</div>
+  </aside>
+
+  <main>
+    <!-- HERO -->
+    <section id="s0" class="hero">
+      <svg class="reticle" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g stroke="#37dcef" stroke-width="1" fill="none" opacity="0.35">
+          <path d="M120 400 Q300 300 520 380 T920 360"/><path d="M120 440 Q320 350 520 420 T920 410"/>
+          <rect x="640" y="200" width="120" height="90" rx="4"/><rect x="500" y="230" width="60" height="120" rx="4"/>
+        </g>
+      </svg>
+      <div class="hero-inner">
+        <div class="eyebrow">Image Segmentation · 2026 Edition</div>
+        <h1>이미지를<br>픽셀 단위로 읽다.</h1>
+        <p class="lead">분류가 "이미지 → 단어 1개"라면, 분할은 "픽셀마다 단어". FCN의 합성곱화부터 U-Net·RoI Align·IoU vs Dice까지 — 헷갈리는 핵심 원리를 직접 만지며 이해합니다.</p>
+        <div class="q-grid">
+          <div class="q"><div class="qn">Q1</div><p>Semantic Segmentation이란? 분류와 무엇이 다른가?</p></div>
+          <div class="q"><div class="qn">Q2</div><p>FCN의 특징과 기존 분류 CNN과의 차이는?</p></div>
+        </div>
+        <div class="tldr"><b>한 줄 답</b> — 분할은 <b>모든 픽셀에 라벨</b>을 붙이는 밀집 예측. FCN은 분류기의 <b>FC를 1×1 conv로 바꿔</b> 픽셀 예측기로 변신시키며 현대 분할의 문을 열었습니다.</div>
+        <div class="scrollcue"><span class="dot"></span>스크롤 또는 ↓ 키로 시작</div>
+      </div>
+    </section>
+
+    <!-- 01 -->
+    <section id="s1">
+      <div class="eyebrow">Part 1 · 분할의 지형도</div>
+      <h2>'한 장에 한 단어' vs '픽셀마다 한 단어'</h2>
+      <p><strong>분류</strong>는 사진을 통째로 보고 라벨 <strong>하나</strong>를, <strong>분할</strong>은 <strong>모든 픽셀</strong>에 클래스를 붙여 입력과 같은 크기의 <strong>라벨 지도</strong>를 만듭니다. 토글로 같은 장면을 두 방식으로 보세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="vCls">Classification — 라벨 1개</button>
+          <button class="tg" id="vSeg">Segmentation — 픽셀별</button>
+        </div>
+        <svg id="sceneSvg" viewBox="0 0 520 300" class="demo-svg"></svg>
+        <div class="legend" id="sceneLegend"></div>
+        <p class="footnote" id="sceneDesc"></p>
+      </div>
+      <table>
+        <thead><tr><th>작업</th><th>질문</th><th>출력</th></tr></thead>
+        <tbody>
+          <tr><td>이미지 분류</td><td>이 사진은 무엇인가</td><td>라벨 하나 ("고양이")</td></tr>
+          <tr><td>객체 검출</td><td>무엇이, 어디에</td><td>물체마다 박스 + 라벨</td></tr>
+          <tr><td><strong style="color:var(--cyan)">분할</strong></td><td>어느 <strong>픽셀</strong>이 무엇인가</td><td><strong>픽셀 단위 윤곽</strong></td></tr>
+        </tbody>
+      </table>
+      <div class="note info"><span class="ic">왜 박스론 부족?</span><p>박스는 직사각형이라 비스듬한 고양이·구불구불한 도로에선 배경이 잔뜩 섞입니다. 분할은 물체에 해당하는 <b>픽셀만</b> 정확히 짚어냅니다.</p></div>
+
+      <h3>픽셀 단위 라벨링 — 라벨 · 학습 · 추론의 의미</h3>
+      <p>분류는 사진 한 장에 라벨 하나면 끝이지만, 분할은 <strong>모든 픽셀 각각</strong>에 "넌 무슨 클래스야?"를 답합니다. 그래서 ①정답도 픽셀마다 색칠하고(라벨링), ②모델은 픽셀마다 클래스 확률을 내며(학습), ③추론도 픽셀마다 argmax로 라벨을 정합니다. 아래에서 모드를 바꾸고, <strong>픽셀을 클릭</strong>해 그 자리의 확률 벡터를 확인하세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="pxRaw">① 원본 이미지</button>
+          <button class="tg" id="pxLabel">② 픽셀별 라벨(정답)</button>
+          <button class="tg" id="pxPred">③ 모델 추론</button>
+        </div>
+        <div class="twocol" style="margin-top:8px; align-items:start">
+          <svg id="pxSvg" viewBox="0 0 400 240" class="demo-svg"></svg>
+          <div>
+            <p class="footnote" id="pxDesc" style="margin-top:0"></p>
+            <div id="pxPanel" style="margin-top:10px;min-height:60px"></div>
+          </div>
+        </div>
+        <div class="legend" id="pxLegend"></div>
+      </div>
+      <div class="note imp"><span class="ic">정수 행렬</span><p><b>컴퓨터에겐 분할 라벨이 곧 정수 행렬</b>입니다 — 각 픽셀에 클래스 번호(0=하늘 … 4=도로)가 적힌 H×W 행렬이죠. 모델 출력은 픽셀마다 클래스 확률(<b>H×W×C</b>)이고, <b>argmax</b>로 픽셀별 번호를 정해 라벨 지도를 만듭니다. 색은 사람이 보기 위한 표시일 뿐 — 실제로는 <b>물체 윤곽을 경계로 숫자가 칠해진</b> 것. 학습 땐 픽셀마다 손실(CE 등)을 평균냅니다(라벨링이 비싼 이유: 240칸을 일일이, 실제론 수백만 픽셀).</p></div>
+    </section>
+
+    <!-- 02 -->
+    <section id="s2">
+      <div class="eyebrow">Part 1 · 인식 사다리</div>
+      <h2>무엇을 · 어디서 · 누구를</h2>
+      <p>분류에서 분할로 갈수록 정밀해집니다. 단계를 눌러 같은 장면이 어떻게 변하는지 보세요.</p>
+      <div class="twocol">
+        <svg id="ladderSvg" viewBox="0 0 520 300" class="demo-svg"></svg>
+        <div class="ladder" id="ladder"></div>
+      </div>
+      <div class="note imp"><span class="ic">Thing vs Stuff</span><p><b>파놉틱</b>은 셀 수 있는 <b>Thing</b>(사람·차 → 인스턴스 방식)과 셀 수 없는 <b>Stuff</b>(하늘·도로 → 시맨틱 방식)를 한 장면에서 동시에 처리합니다. 자율주행이 대표 사례.</p></div>
+    </section>
+
+    <!-- 03 -->
+    <section id="s3">
+      <div class="eyebrow">Part 2 · FCN</div>
+      <h2>분류기를 '분할기'로 — 합성곱화</h2>
+      <p>분류 CNN은 마지막 <strong>FC 층</strong>에서 ① Flatten으로 <strong>공간 정보를 뭉개고</strong> ② <strong>입력 크기를 고정</strong>합니다. FCN은 <strong>FC를 1×1 합성곱으로 대체</strong>해 이 둘을 동시에 풉니다.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="fcFC">기존 분류기 (FC)</button>
+          <button class="tg" id="fcConv">FCN (1×1 conv)</button>
+        </div>
+        <svg id="fcnSvg" viewBox="0 0 520 230" class="demo-svg"></svg>
+        <p class="footnote" id="fcnDesc"></p>
+      </div>
+      <div class="note info"><span class="ic">수치로</span><p>특징맵 <code>[512,7,7]</code>에서 FC는 7×7×512 = <b>25,088개</b>를 곱해 더합니다. <code>Conv2d(512,1,kernel=7)</code>로 <b>필터를 특징맵 크기와 같게</b> 잡으면 가중치도 25,088개로 동일 — 계산은 같고, 차이는 <b>한 줄로 펴느냐(위치 소실) vs 공간 유지(위치 보존)</b> 뿐. 게다가 conv는 <b>입력 크기 제약도 사라집니다.</b></p></div>
+
+      <h3>Flatten(FC) vs 합성곱화(Conv) — 의미·기능·수식·기술의 차이</h3>
+      <p>같은 특징맵 <code>[512,7,7]</code>에서 점수를 뽑는 두 방식. <strong>계산은 똑같은데</strong>, 결과를 <strong>한 줄로 펴느냐(FC) vs 큐브 모양을 유지하느냐(Conv)</strong>가 운명을 가릅니다.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="fvFlat">FC — Flatten(선형화)</button>
+          <button class="tg" id="fvConv">FCN — 합성곱화(큐브)</button>
+        </div>
+        <svg id="fvSvg" viewBox="0 0 520 300" class="demo-svg"></svg>
+        <p class="footnote" id="fvDesc"></p>
+      </div>
+      <div class="formula" style="text-align:center">두 방식 모두 &nbsp; 점수 = w₁x₁ + w₂x₂ + ⋯ + w₂₅₀₈₈x₂₅₀₈₈ + b &nbsp;<span style="color:var(--ink-faint)">(가중치 25,088개 동일)</span></div>
+      <table>
+        <thead><tr><th>관점</th><th>FC — Flatten(선형화)</th><th>FCN — 합성곱화(큐브)</th></tr></thead>
+        <tbody>
+          <tr><td>의미</td><td>"이 사진은 고양이"</td><td>"<b>여기에</b> 고양이가 있다" (위치 보존)</td></tr>
+          <tr><td>기능</td><td>벡터 1개 → 라벨 1개</td><td>공간 히트맵 → 픽셀별 점수</td></tr>
+          <tr><td>수식</td><td>y = Wx + b (x는 25,088 벡터)</td><td>같은 W를 7×7×512 필터로 — <b>동일 연산</b></td></tr>
+          <tr><td>기술</td><td>입력 크기 고정(25,088에 묶임)</td><td>임의 입력 — 크면 출력도 커져 히트맵</td></tr>
+        </tbody>
+      </table>
+      <div class="note tip"><span class="ic">tabby cat</span><p>작은 입력을 넣으면 점수 1개("tabby cat"), <b>큰 이미지를 넣으면 필터가 슬라이딩</b>해 위치별 점수 격자 — <b>"tabby cat heatmap"</b>이 나옵니다(FCN 논문의 그 그림). 분류기가 자연스럽게 픽셀 예측기로 변신하는 순간이죠.</p></div>
+    </section>
+
+    <!-- 04 전치 합성곱 -->
+    <section id="s4">
+      <div class="eyebrow">Part 2 · 헷갈리는 개념 ①</div>
+      <h2>전치 합성곱 — 거꾸로 합성곱으로 키우기</h2>
+      <p>인코더가 줄인 특징맵을 디코더가 다시 키웁니다. 핵심 도구가 <strong>전치 합성곱</strong> — 일반 합성곱의 <em>거꾸로</em>입니다. 일반 합성곱이 <strong>여러 입력 → 하나</strong>(크기↓)라면, 전치 합성곱은 <strong>하나의 입력 → 여러 출력</strong>(크기↑)에 흩뿌리고, 겹치면 <strong>더합니다.</strong></p>
+      <div class="stage">
+        <div class="twocol" style="margin-top:0; align-items:start">
+          <svg id="tconvSvg" viewBox="0 0 520 240" class="demo-svg"></svg>
+          <div>
+            <p style="font-size:13.5px; margin-top:0">입력 칸 하나하나가 <b>'커널 도장'</b>을 출력에 찍습니다(입력값×커널). 도장이 겹치는 칸은 값이 합쳐지고, 보폭(stride)만큼 출력이 커집니다.</p>
+            <div class="controls">
+              <button class="btn" id="tcStep">▶ 다음 입력 칸</button>
+              <button class="btn ghost" id="tcAll">전체 ⏭</button>
+              <button class="btn ghost" id="tcReset">초기화</button>
+            </div>
+            <p class="footnote" id="tcDesc"></p>
+          </div>
+        </div>
+        <div class="legend"><span><i style="background:#37dcef"></i>현재 입력 칸</span><span><i style="background:rgba(247,187,63,.6)"></i>지금 찍는 도장(3×3)</span><span><i style="background:rgba(70,227,163,.45)"></i>누적된 출력</span></div>
+      </div>
+      <div class="note imp"><span class="ic">실무 팁</span><p>도장이 고르지 않게 겹치면 <b>체커보드(격자) 무늬</b>가 생길 수 있어, 실무에선 <i>"양선형 업샘플 + 일반 합성곱"</i>으로 대체하기도 합니다(DeepLab 계열).</p></div>
+    </section>
+
+    <!-- 05 스킵 & U-Net -->
+    <section id="s5">
+      <div class="eyebrow">Part 2·3 · 헷갈리는 개념 ②③</div>
+      <h2>스킵 연결 — 거친 출력을 또렷하게</h2>
+      <p>인코더 끝 특징맵은 32배나 작아(224→7) 한 번에 키우면 모자이크처럼 뭉개집니다(<strong>FCN-32s</strong>). 인코더 <strong>중간 단계</strong>의 또렷한 경계를 디코더로 <strong>건너뛰어 더해주면</strong> 선명해집니다.</p>
+      <div class="stage">
+        <div class="slider-row" style="margin-top:0;max-width:460px">
+          <label>스킵 결합 단계 <span class="val" id="skipName">FCN-32s</span></label>
+          <input type="range" id="skipRange" min="0" max="2" step="1" value="0">
+        </div>
+        <svg id="skipSvg" viewBox="0 0 520 200" class="demo-svg"></svg>
+        <p class="footnote" id="skipDesc"></p>
+      </div>
+
+      <h3>FCN vs U-Net — 전체 구조 한눈에 (인코더·버틀넥·디코더·스킵)</h3>
+      <p>두 모델 모두 <strong>줄였다(인코더) → 가장 압축(버틀넥) → 키운다(디코더)</strong>는 인코더-디코더 골격은 같습니다. 차이는 <strong>스킵을 얼마나, 어떻게</strong> 쓰느냐. 토글로 비교하세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg" id="archFCN">FCN (FCN-8s)</button>
+          <button class="tg on" id="archUNet">U-Net</button>
+        </div>
+        <svg id="archSvg" viewBox="0 0 520 300" class="demo-svg"></svg>
+        <div class="legend"><span><i style="background:#37dcef"></i>인코더(다운샘플)</span><span><i style="background:#94a4f2"></i>버틀넥</span><span><i style="background:#46e3a3"></i>디코더(업샘플)</span><span><i style="background:#f7bb3f"></i>Add 스킵</span><span><i style="background:#37dcef;opacity:.6"></i>Concat 스킵</span></div>
+        <p class="footnote" id="archDesc"></p>
+      </div>
+
+      <h3>U-Net — 그리고 Add vs Concatenate</h3>
+      <p>같은 2015년의 <strong>U-Net</strong>은 <strong>모든 단계</strong>를 스킵하고(FCN은 일부만), 결합 방식이 다릅니다. 토글로 비교하세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="mAdd">Add (FCN) — 더하기</button>
+          <button class="tg" id="mConcat">Concatenate (U-Net) — 이어붙이기</button>
+        </div>
+        <svg id="fuseSvg" viewBox="0 0 520 200" class="demo-svg"></svg>
+        <p class="footnote" id="fuseDesc"></p>
+      </div>
+      <div class="note imp"><span class="ic">시험 포인트</span><p><b>Add</b>=두 특징을 한 덩어리로 섞음(채널 그대로). <b>Concatenate</b>=나란히 쌓음(채널 합쳐짐) → 뒤 합성곱이 "어느 쪽을 쓸지" 학습해 선택. U-Net이 경계를 더 또렷이 살리는 비결이며, 적은 데이터+강증강으로 <b>의료영상 표준</b>이 됐습니다.</p></div>
+
+      <h3>U-Net 계보 — U-Net vs U-Net++ vs Attention U-Net</h3>
+      <p>모두 <strong>인코더-디코더 + 스킵</strong> 골격을 공유하되, <strong>스킵 경로를 어떻게 손봤는지</strong>가 다릅니다. 토글로 스킵의 진화를 보세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="uf0">U-Net</button>
+          <button class="tg" id="uf1">U-Net++</button>
+          <button class="tg" id="uf2">Attention U-Net</button>
+        </div>
+        <svg id="ufSvg" viewBox="0 0 520 240" class="demo-svg"></svg>
+        <p class="footnote" id="ufDesc"></p>
+      </div>
+      <div class="note info"><span class="ic">한눈에</span><p><b>U-Net</b>: 인코더→디코더 <b>직접 스킵</b>. <b>U-Net++</b>: 그 사이를 <b>촘촘한 중첩 합성곱 노드</b>로 메워 정보가 매끄럽게 전달(+deep supervision). <b>Attention U-Net</b>: 스킵에 <b>어텐션 게이트(AG)</b>를 둬 중요한 영역만 강하게 넘김(배경은 약하게). 기본 골격은 모두 동일 — "어디를 어떻게 손봤나"로 읽힙니다.</p></div>
+
+      <h3>헷갈리는 개념 ⑥ — 팽창 합성곱 · ASPP</h3>
+      <p>분할의 딜레마: <strong>넓게 보려면</strong> 줄여서 수용영역을 키워야 하는데 <strong>줄이면 경계가 뭉개집니다.</strong> <strong>팽창(Atrous) 합성곱</strong>은 커널에 <em>구멍</em>을 넣어 — 파라미터 9개 그대로 — <strong>해상도 손실 없이 수용영역만</strong> 키웁니다.</p>
+      <div class="stage">
+        <svg id="atrousSvg" viewBox="0 0 520 218" class="demo-svg"></svg>
+        <div class="legend"><span><i style="background:#37dcef"></i>커널 탭(가중치 9개)</span><span><i style="background:#0d1626;border:1px solid #27395a"></i>건너뛴 칸(구멍)</span></div>
+      </div>
+      <div class="note info"><span class="ic">ASPP · HRNet</span><p><b>ASPP</b>(DeepLab)는 여러 dilation(6·12·18)을 <b>병렬</b>로 두어 작은~큰 물체의 다중 스케일 맥락을 한 번에 잡습니다. <b>DeepLabv3+</b>는 ASPP+가벼운 디코더로 경계를 복원(초기엔 <b>CRF</b> 후처리도). <b>HRNet</b>은 줄이지 않고 <b>고해상도를 끝까지 유지</b>하며 여러 해상도를 병렬 융합 → 위치 정밀도가 중요한 과제에 강함.</p></div>
+    </section>
+
+    <!-- 06 RoI Align -->
+    <section id="s6">
+      <div class="eyebrow">Part 3 · 헷갈리는 개념 ④</div>
+      <h2>인스턴스 분할과 RoI Align</h2>
+
+      <h3>Mask R-CNN — 전체 구조와 동작</h3>
+      <p>Mask R-CNN은 <strong>Faster R-CNN(검출) + 마스크 가지</strong>입니다. 백본으로 특징을 뽑고 → RPN이 후보를 제안 → <strong>RoI Align</strong>으로 정렬 → <strong>3개 헤드</strong>가 클래스·박스·마스크를 동시에 냅니다. 단계를 <strong>클릭</strong>해 설명을 보세요.</p>
+      <div class="stage">
+        <svg id="mrSvg" viewBox="0 0 520 250" class="demo-svg"></svg>
+        <p class="footnote" id="mrDesc"></p>
+      </div>
+      <div class="note info"><span class="ic">2-Stage</span><p>박스를 먼저 찾고 그 안에서만 픽셀을 칠하니 <b>마스크도 개체별로</b> 따로 나옵니다(박스 3개 → 마스크 3개). 단 후보 추리고 다시 처리하는 2-Stage라 정확하지만 <b>무거워</b> 실시간엔 부담. <b>Class·Box Head는 FC</b>라 입력을 고정 7×7로 통일해야 해서 RoI Align이 필요합니다.</p></div>
+      <p><strong>Mask R-CNN</strong>은 Faster R-CNN에 <strong>마스크 가지</strong>를 더해 <em>클래스·박스·마스크</em>를 냅니다. 문제는 박스 좌표가 <strong>소수점</strong>인데 특징맵은 정수 칸만 읽을 수 있다는 것. 슬라이더로 박스를 움직이며 두 방식을 비교하세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="roiPool">RoI Pooling — 반올림</button>
+          <button class="tg" id="roiAlign">RoI Align — 보간</button>
+        </div>
+        <svg id="roiSvg" viewBox="0 0 520 280" class="demo-svg"></svg>
+        <div class="slider-row" style="margin-top:12px;max-width:460px">
+          <label>박스 위치 (소수점) <span class="val" id="roiPos">x = 1.40</span></label>
+          <input type="range" id="roiRange" min="0" max="240" step="1" value="40">
+        </div>
+        <p class="footnote" id="roiDesc"></p>
+      </div>
+      <div class="note imp"><span class="ic">왜 중요?</span><p>검출(박스·클래스)은 0.4칸 밀려도 무방했지만, <b>마스크는 픽셀 단위</b>라 밀리면 경계가 통째로 어긋나 학습이 불안정해집니다. RoI Align은 반올림 대신 <b>양선형 보간</b>으로 그 자리 값을 직접 계산해 위치를 보존합니다.</p></div>
+      <div class="grid2" style="margin-top:6px">
+        <div class="card"><div class="k">박스 없는 인스턴스</div><p><b>YOLACT·SOLO</b>는 후보를 안 추리고 한 번에 마스크 예측 → 검출의 "2-Stage 정확·느림, 1-Stage 빠름" 구도가 분할에서도 반복.</p></div>
+        <div class="card"><div class="k">파놉틱</div><p><b>Mask2Former</b>가 마스크드 어텐션으로 시맨틱·인스턴스·파놉틱을 통합(Thing=인스턴스, Stuff=시맨틱). Mask R-CNN 대비 약 8× 빠른 수렴.</p></div>
+      </div>
+
+      <h3>RoI Align의 심장 — Bilinear Interpolation</h3>
+      <p>RoI Align은 소수점 자리(예: 12.4행)의 값을 <strong>반올림 대신 직접 계산</strong>합니다. 주변 정수 칸 4개(A·B·C·D)를 <strong>거리에 따라 가중평균</strong> — 각 모서리의 가중치는 <strong>대각선 맞은편 직사각형 넓이</strong>입니다. 점 P를 움직여보세요.</p>
+      <div class="stage">
+        <div class="twocol" style="margin-top:0; align-items:start">
+          <svg id="biSvg" viewBox="0 0 300 290" class="demo-svg"></svg>
+          <div>
+            <div class="slider-row" style="margin-top:0"><label>P 가로 (w₁, 왼쪽폭) <span class="val" id="biW">0.60</span></label><input type="range" id="biRangeX" min="5" max="95" value="60"></div>
+            <div class="slider-row"><label>P 세로 (h₁, 위쪽폭) <span class="val" id="biH">0.70</span></label><input type="range" id="biRangeY" min="5" max="95" value="70"></div>
+            <div class="formula" id="biFormula" style="font-size:12px;line-height:1.9"></div>
+          </div>
+        </div>
+      </div>
+      <div class="note tip"><span class="ic">직관</span><p>P를 한 점에 붙일수록 그 점의 <b>맞은편 직사각형이 커집니다</b> → 가까운 점이 큰 가중치. 강의 예시(w₁=0.6, h₁=0.7)에서 가장 가까운 <b>C의 가중치 0.42</b>가 최대, 가장 먼 <b>A는 0.12</b>로 최소 → V(P) ≈ <b>3.43</b>. RoI Align은 이 계산을 7×7 격자의 모든 샘플점에 적용한 뒤 Max Pool 합니다.</p></div>
+    </section>
+
+    <!-- 07 IoU vs Dice -->
+    <section id="s7">
+      <div class="eyebrow">Part 4 · 헷갈리는 개념 ⑤</div>
+      <h2>IoU vs Dice — 둘 다 겹침인데 왜 다를까</h2>
+      <p>슬라이더로 두 영역의 겹침을 조절하며 IoU와 Dice가 어떻게 달라지는지 보세요.</p>
+      <div class="twocol" style="align-items:start">
+        <svg id="iouSvg" viewBox="0 0 360 280" class="demo-svg"></svg>
+        <div>
+          <div class="slider-row" style="margin-top:0">
+            <label>겹침 정도 <span class="val" id="ovVal">50%</span></label>
+            <input type="range" id="ovRange" min="0" max="100" step="1" value="50">
+          </div>
+          <div class="mbar iou"><div class="top"><span>IoU = ∩ / ∪</span><span class="v" id="iouNum">0.00</span></div><div class="track"><div class="fill" id="iouFill" style="width:0%"></div></div></div>
+          <div class="mbar dice"><div class="top"><span>Dice = 2∩ / (A+B)</span><span class="v" id="diceNum">0.00</span></div><div class="track"><div class="fill" id="diceFill" style="width:0%"></div></div></div>
+          <div class="formula" style="font-size:13px; margin-top:14px">Dice = <span class="frac"><span class="num">2 · IoU</span><span class="den">1 + IoU</span></span> &nbsp;→ 항상 <b style="color:var(--violet)">Dice ≥ IoU</b></div>
+        </div>
+      </div>
+      <div class="note info"><span class="ic">직관</span><p><b>IoU</b>는 오차를 더 엄하게(분모가 합집합 전체). <b>Dice</b>는 교집합을 두 번 세 <b>소수·작은 물체에 덜 가혹</b> → 손실 함수로 인기(특히 의료). 평가 표준 지표는 보통 <b>IoU(mIoU)</b>. 0과 1에서만 둘이 일치합니다.</p></div>
+      <div class="note imp"><span class="ic">mIoU</span><p>분할 평가는 <b>클래스별 IoU를 평균</b>(mIoU). 클래스 불균형 때문 — 예: 배경 0.95 + 차 0.40을 뭉치면 ~0.9(잘한 듯), <b>클래스 평균 (0.95+0.40)/2 = 0.675</b>로 "차를 놓침"이 드러납니다. (인스턴스=mask AP, 파놉틱=PQ)</p></div>
+      <div class="note info"><span class="ic">그 밖의 지표</span><p><b>Pixel Accuracy</b>=맞춘 픽셀÷전체(불균형에 속기 쉬워 보조용). <b>PQ = SQ × RQ</b> — 파놉틱에서 <i>"얼마나 정확히 칠했나(SQ=매칭 영역 평균 IoU)"</i> × <i>"얼마나 빠짐없이 찾았나(RQ=F1형)"</i>. <b>Boundary IoU</b>=영역 전체가 아닌 <b>경계 띠</b>에서만 IoU를 재 큰 물체의 경계 오차가 묻히는 mIoU의 한계를 보완.</p></div>
+    </section>
+
+    <!-- 08 손실함수 -->
+    <section id="s8">
+      <div class="eyebrow">Part 4 · 학습</div>
+      <h2>손실 함수 — 클래스 불균형과의 싸움</h2>
+      <p>분할 손실의 핵심 과제는 <strong>배경 ≫ 전경</strong> 불균형과 <strong>경계 정밀도</strong>입니다.</p>
+      <table>
+        <thead><tr><th>손실</th><th>핵심</th><th>강점 · 언제</th></tr></thead>
+        <tbody>
+          <tr><td>Cross-Entropy</td><td>픽셀별 로그 손실</td><td>안정·잘 보정됨. 단 <b style="color:var(--red)">불균형에 취약</b></td></tr>
+          <tr><td>Weighted CE / OHEM</td><td>클래스 가중 · 어려운 픽셀만 학습</td><td>불균형·난영역 보강(OHEM=손실 큰 픽셀만 역전파)</td></tr>
+          <tr><td>Dice Loss</td><td>1 − Dice계수</td><td><b style="color:var(--green)">불균형에 강건</b>(겹침 기반). 소수·작은 물체</td></tr>
+          <tr><td>Focal Loss</td><td>쉬운 픽셀 down-weight</td><td>어려운 픽셀·경계에 집중(γ)</td></tr>
+          <tr><td>Tversky / Focal-Tversky</td><td>FP·FN 가중 분리(α,β)</td><td>재현율 편향 조절(놓치면 안 되는 의료)</td></tr>
+          <tr><td>Lovász-Softmax</td><td><b>IoU(Jaccard) 직접 최적화</b></td><td>평가 지표와 손실의 간극↓ — 미세조정 단계</td></tr>
+          <tr><td><strong style="color:var(--cyan)">Combo (CE+Dice)</strong></td><td>두 손실 합</td><td><b>CE 안정성 + Dice 강건성 → 실무 베스트</b></td></tr>
+          <tr><td>경계(Boundary) 손실</td><td>경계 거리 페널티</td><td>지그재그·미세 경계(의료)</td></tr>
+        </tbody>
+      </table>
+      <div class="note tip"><span class="ic">베스트 프랙티스</span><p>단일 손실보다 <b>CE+Dice / Focal-Tversky</b> 조합이 불균형·경계에 강합니다. 또 소수 클래스가 나타나는 영역 위주의 <b>타깃 증강</b>이 효과적입니다.</p></div>
+    </section>
+
+    <!-- 09 최신 실전 -->
+    <section id="s9">
+      <div class="eyebrow">Part 5 · 최신 동향 & 실전</div>
+      <h2>트랜스포머·파운데이션, 그리고 도메인이 모델을 정한다</h2>
+      <p>CNN(FCN·U-Net·DeepLab)을 넘어 지금은 <strong>트랜스포머·파운데이션 모델</strong>이 주류입니다 — <strong>SegFormer·Mask2Former</strong>(통합·SOTA), <strong>SAM 1/2/3</strong>(프롬프트·오픈보캐뷸러리 제로샷).</p>
+      <div class="note tip"><span class="ic">SAM 3 현실</span><p>화려해 보이지만 <i>텍스트 프롬프트만</i>으론 도메인 성능이 급락(의료 Dice <b>11.9%</b>, GT 박스 의존). YOLO11 대비 <b>55× 느리나 경계 안정성 12× 우수</b>. 그래서 현업 결론은 <b>"SAM 3의 킬러 앱은 추론 배포가 아니라 데이터 라벨링"</b>.</p></div>
+      <h3>실전 모델 선택 가이드</h3>
+      <table>
+        <thead><tr><th>상황</th><th>추천</th><th>이유</th></tr></thead>
+        <tbody>
+          <tr><td>의료영상</td><td><strong>nnU-Net</strong> (CNN)</td><td>자동 구성·소량 데이터에 강함. 트랜스포머가 못 따라옴</td></tr>
+          <tr><td>실시간·엣지</td><td><strong>YOLO-seg / YOLACT++</strong></td><td>33+ FPS, 엣지 배포</td></tr>
+          <tr><td>최고 정확도</td><td><strong>Mask2Former</strong></td><td>통합·SOTA(복잡도 정당화 시)</td></tr>
+          <tr><td>데이터 라벨링</td><td><strong>SAM 3</strong></td><td>오픈 보캐뷸러리 오토라벨링</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px">모델은 <strong>속도 ↔ 정확도/통합성</strong> 트레이드오프 위에 놓입니다. 버블을 <strong>클릭</strong>해 구조·기능·용도를 확인하세요.</p>
+      <div class="stage">
+        <svg id="msSvg" viewBox="0 0 520 280" class="demo-svg"></svg>
+        <p class="footnote" id="msDesc"></p>
+      </div>
+
+      <div class="note info"><span class="ic">오토라벨링</span><p>분할 라벨(픽셀)은 비싸고 박스 라벨은 흔합니다. <b>박스 라벨을 SAM에 넣어 마스크로 변환</b>하면 값싼 데이터를 정밀 분할셋으로 업그레이드 — 실무에서 가장 즉시 유효한 활용.</p></div>
+
+      <h3>오토라벨링 워크플로우 — 로우 이미지에서 학습 가능한 분할셋까지</h3>
+      <div class="vflow">
+        <div class="vstep"><span class="fnum">1</span><div class="fbody"><b>원본 수집</b><p>카메라·CCTV로 촬영된 <b>로우 이미지</b>(라벨 없음)를 모읍니다.</p></div></div>
+        <div class="vstep"><span class="fnum">2</span><div class="fbody"><b>객체검출 박스 라벨</b><p>값싼 <b>바운딩 박스 라벨</b>을 붙이거나 기존 검출 데이터셋을 활용 — 박스는 흔하고 저렴.</p></div></div>
+        <div class="vstep hi"><span class="fnum">3</span><div class="fbody"><b>SAM 마스크 변환 (자동)</b><p>박스를 <b>프롬프트로 SAM에 입력</b> → 박스 안 픽셀을 칠한 <b>세그멘테이션 마스크</b>를 자동 생성. 박스 라벨이 분할 라벨로 승격됩니다.</p></div></div>
+        <div class="vstep"><span class="fnum">4</span><div class="fbody"><b>분할셋 생성·전처리/정제</b><p>마스크를 <b>클래스 정수로 매핑</b>, 리사이즈·정규화, 작은 영역·노이즈 제거 → 학습 포맷으로 정리.</p></div></div>
+        <div class="vstep"><span class="fnum">5</span><div class="fbody"><b>라벨 검증</b><p>경계 품질·오류를 점검하고 <b>사람이 검수·수정</b>(어려운 케이스만). 자동 라벨의 신뢰도를 확보.</p></div></div>
+        <div class="vstep ok"><span class="fnum">6</span><div class="fbody"><b>학습 적용</b><p>바로 학습 가능한 <b>분할 데이터셋</b> 완성 → U-Net·Mask2Former 등 학습에 투입.</p></div></div>
+      </div>
+      <div class="note tip"><span class="ic">핵심</span><p>사람은 <b>박스</b>(빠름)만 그리고, 픽셀 마스크는 <b>SAM이 자동 생성</b> → 라벨링 비용을 크게 절감. 사람은 <b>검증·수정</b>에만 집중하는 <b>휴먼-인-더-루프</b> 구조가 실무 표준입니다.</p></div>
+      <div class="grid3" style="margin-top:6px">
+        <div class="card"><div class="k">자율주행</div><p>도로·보행자·차량 실시간 분할 → 주행 가능 영역. Cityscapes·파놉틱.</p></div>
+        <div class="card"><div class="k">의료영상</div><p>장기·종양·세포(MONAI·SAM·nnU-Net). FN 치명 → 재현율 우선.</p></div>
+        <div class="card"><div class="k">산업 검사</div><p>웨이퍼·금속 표면 결함(스크래치 등). SAM 3가 텍스트로 결함 검출도.</p></div>
+      </div>
+    </section>
+
+    <!-- 10 정리 -->
+    <section id="s10">
+      <div class="eyebrow">Wrap-up · 발표 핵심</div>
+      <h2>가져갈 메시지 셋</h2>
+      <div class="grid3">
+        <div class="card"><div class="k">01</div><h4>분류 vs 분할</h4><p>분류는 "이미지→단어 1개", 분할은 "픽셀마다 단어"(밀집 예측). 위치를 끝까지 보존하고, mIoU로 채점.</p></div>
+        <div class="card"><div class="k">02</div><h4>FCN의 한 수</h4><p>FC를 1×1 conv로 바꿔 픽셀 예측기로 변신. 전치 합성곱으로 키우고 스킵으로 경계를 살림 → U-Net으로 정교화.</p></div>
+        <div class="card"><div class="k">03</div><h4>헷갈리는 5가지 정복</h4><p>전치 합성곱·RoI Align·IoU vs Dice·Add vs Concat·mIoU. 그리고 2026 무게추는 트랜스포머·파운데이션 + 오토라벨링.</p></div>
+      </div>
+      <div class="summary" style="margin-top:24px"><b>한 문장 정리</b> — 분할은 "모든 픽셀이 무엇인지"를 답하는 기술이고, 그 길은 <b>FCN의 합성곱화</b>에서 시작해 <b>U-Net의 정교한 스킵</b>, <b>Mask R-CNN의 RoI Align</b>, 그리고 <b>SAM의 프롬프트형 파운데이션</b>으로 이어졌다.</div>
+      <p style="margin-top:24px;font-family:var(--mono);font-size:12px;color:var(--ink-faint)">Weekly Paper #09 · Image Segmentation · 강의자료 + 최신 문헌 교차검증 2026.06</p>
+    </section>
+
+    <!-- ============ 11 부록 ============ -->
+    <section id="s11">
+      <div class="eyebrow">Appendix · 실무 레퍼런스</div>
+      <h2>세그멘테이션 성능을 끌어올리는 튜닝 대상 총정리</h2>
+      <p>실제로 <strong>mIoU·경계 품질</strong>을 높일 때 손대는 것들 — 데이터부터 배포까지. <code>코드체</code>는 프레임워크에서 자주 만나는 인자명입니다.</p>
+      <table class="aptbl">
+        <thead><tr><th>튜닝 대상</th><th>무엇을 조절</th><th>효과 · 언제 쓰나</th></tr></thead>
+        <tbody>
+          <tr class="cat"><td colspan="3">① 데이터 · 증강</td></tr>
+          <tr><td>해상도 · 크롭 <code>crop_size</code></td><td>학습/추론 입력 크기</td><td>키우면 경계·소형 구조↑(메모리↓). 분할은 큰 입력이 유리</td></tr>
+          <tr><td>타깃 증강</td><td>소수 클래스 영역 위주 증강</td><td>데이터 부풀림 없이 소수 클래스↑</td></tr>
+          <tr><td>기하·광도 변형</td><td>flip·scale·rotate·elastic·HSV</td><td>조명·자세·변형 강건성(의료는 elastic)</td></tr>
+          <tr><td>CutMix · Copy-Paste</td><td>마스크째 합성 증강</td><td>다양성↑·드문 객체 보강</td></tr>
+          <tr><td>라벨 품질 · 경계 정밀</td><td>픽셀 라벨 정제 · 오토라벨링(SAM)</td><td>라벨 노이즈가 곧 mIoU 천장 → 정제 필수</td></tr>
+          <tr><td>클래스 균형</td><td>리샘플링 · 클래스 가중</td><td>희소 클래스 보강</td></tr>
+
+          <tr class="cat"><td colspan="3">② 모델 아키텍처</td></tr>
+          <tr><td>백본 (Backbone)</td><td>ResNet·ConvNeXt·Swin·MiT</td><td>표현력 ↔ 속도</td></tr>
+          <tr><td>업샘플 방식</td><td>전치 conv · 양선형+conv · 언풀링 · PixelShuffle</td><td>경계 품질 ↔ 체커보드 아티팩트</td></tr>
+          <tr><td>맥락 모듈</td><td><b>ASPP·팽창 합성곱</b>(DeepLab) · 피라미드 풀링(PSP)</td><td>해상도 지키며 수용영역↑ · 다중 스케일</td></tr>
+          <tr><td>고해상도 유지</td><td>HRNet</td><td>줄이지 않고 병렬 융합 → 위치 정밀</td></tr>
+          <tr><td>스킵 융합</td><td>Add(FCN) ↔ Concatenate(U-Net)</td><td>경계 복원 · 전 단계 스킵</td></tr>
+          <tr><td>Deep Supervision</td><td>중간 디코더에 보조 손실</td><td>수렴·경계 안정(U-Net++/nnU-Net)</td></tr>
+          <tr><td>어텐션·트랜스포머</td><td>SegFormer · Mask2Former</td><td>전역 맥락 · 과제 통합</td></tr>
+
+          <tr class="cat"><td colspan="3">③ 손실 함수 · 할당</td></tr>
+          <tr><td>불균형 손실</td><td>Weighted CE · Focal · Dice · Tversky · OHEM</td><td>배경≫전경 대응(분할 핵심)</td></tr>
+          <tr><td>지표 정합 손실</td><td><b>Lovász-Softmax</b> · Combo(CE+Dice)</td><td>IoU 직접 최적화 · CE+Dice = 실무 표준</td></tr>
+          <tr><td>경계 손실</td><td>Boundary · Distance map</td><td>지그재그·미세 경계(의료)</td></tr>
+
+          <tr class="cat"><td colspan="3">④ 학습 하이퍼파라미터</td></tr>
+          <tr><td>옵티마이저 + <code>lr</code></td><td>AdamW · SGD · cosine+warmup</td><td>수렴 속도·안정성</td></tr>
+          <tr><td>정규화</td><td><b>GroupNorm · SyncBN</b></td><td>고해상도라 배치 작음 → BatchNorm 통계 불안정 보완</td></tr>
+          <tr><td>메모리 기법</td><td>AMP · gradient checkpointing · accumulation</td><td>고해상도 학습을 메모리 한계에서 가능케</td></tr>
+          <tr><td>전이학습 · <code>freeze</code></td><td>Freeze / Partial / Full + LLRD (아래 표)</td><td>도메인 격차·데이터 양에 맞춰</td></tr>
+          <tr><td>사전학습 출처</td><td>ImageNet · 도메인 사전학습</td><td>가까울수록 수렴↑·데이터 절약</td></tr>
+          <tr><td>EMA · k-fold · 조기종료</td><td>가중치 평균 · 교차검증</td><td>안정화 · 일반화</td></tr>
+
+          <tr class="cat"><td colspan="3">⑤ 추론 · 후처리</td></tr>
+          <tr><td>슬라이딩 윈도우 · Overlap-tile</td><td>큰 이미지를 겹치게 타일 추론</td><td>위성·고해상도(U-Net 표준), 미러 패딩</td></tr>
+          <tr><td>TTA · 멀티스케일 추론</td><td>flip·다중 해상도 평균</td><td>mIoU↑ · 속도↓</td></tr>
+          <tr><td>테스트 해상도 정렬</td><td>학습/추론 transform 일치</td><td>분포 불일치로 인한 성능 저하 방지</td></tr>
+          <tr><td>후처리</td><td>CRF · 형태학 연산 · 소영역 제거</td><td>경계 정제(고전 DeepLab)·노이즈 제거</td></tr>
+
+          <tr class="cat"><td colspan="3">⑥ 평가 · 진단</td></tr>
+          <tr><td>클래스별 mIoU</td><td>클래스마다 IoU 분해</td><td>어느 클래스가 약한지 진단</td></tr>
+          <tr><td>Boundary IoU</td><td>경계 띠 IoU</td><td>경계 품질(큰 물체 오차 묻힘 보완)</td></tr>
+          <tr><td>PQ(SQ×RQ) · mask AP</td><td>파놉틱 · 인스턴스 품질</td><td>과제별 표준 채점</td></tr>
+          <tr><td>오버레이 · FP/FN 갤러리</td><td>GT↔Pred 비교 · 최악 케이스</td><td>라벨 오류·체계적 실패 포착</td></tr>
+
+          <tr class="cat"><td colspan="3">⑦ 배포 · 최적화</td></tr>
+          <tr><td>양자화 · 프루닝 · 증류</td><td>INT8/FP16 · 경량화 · 지식 전이</td><td>엣지·실시간(YOLO-seg)</td></tr>
+          <tr><td>TensorRT · ONNX</td><td>그래프 컴파일</td><td>추론 가속</td></tr>
+        </tbody>
+      </table>
+      <div class="note tip"><span class="ic">진단 → 처방</span><p>막연히 다 건드리지 말고 <b>지표가 가리키는 곳부터</b>: <b>소수 클래스 IoU 낮음</b> → ①타깃 증강·클래스 가중·③Dice/Focal. <b>경계 흐릿(Boundary IoU↓)</b> → ②ASPP/HRNet·③경계 손실·⑤CRF/TTA. <b>작은 물체만 약함</b> → ①해상도↑·②다중 스케일(ASPP/PSP). <b>배경만 잘 맞음</b> → 픽셀 정확도 대신 <b>mIoU</b>로 보고 ③불균형 손실.</p></div>
+
+      <h3 style="margin-top:2em">전이학습 — Freeze · Partial · Full, 그리고 LLRD</h3>
+      <p>사전학습 모델을 <strong>어디까지 다시 학습할지</strong>는 <strong>도메인 격차</strong>와 <strong>데이터 양</strong>으로 결정합니다(검출과 동일 원리).</p>
+      <table class="aptbl">
+        <thead><tr><th>전략</th><th>무엇을 학습</th><th>언제 · 주의</th></tr></thead>
+        <tbody>
+          <tr><td>Freeze (동결)</td><td>인코더 고정, <b>디코더/헤드만</b></td><td>데이터 적고 도메인 유사. 빠르고 메모리↓ — 표현력 부족 시 과소적합</td></tr>
+          <tr><td>Partial (부분)</td><td>앞쪽 동결 + <b>뒤쪽·디코더</b></td><td>중간 규모·중간 격차. 점진적 해동으로 안정 적응</td></tr>
+          <tr><td>Full (전체)</td><td><b>전 층</b> 미세조정</td><td>데이터 충분·격차 큼 → 최고 성능. 단 불안정 → 낮은 LR·warmup·EMA·<b>LLRD</b> 필수</td></tr>
+        </tbody>
+      </table>
+      <div class="note imp"><span class="ic">LLRD 핵심</span><p><b>LLRD(Layer-wise LR Decay)</b>는 <b>입력에 가까운 층일수록 LR을 작게, 헤드에 가까울수록 크게</b> 줍니다(층마다 ×0.9 등). 저수준(엣지·질감) 사전지식은 보존하고 과제 특징만 빠르게 적응 → ViT·Swin 등 <b>대형 백본 미세조정의 사실상 표준</b>이며 파국적 망각(catastrophic forgetting)을 막습니다.</p></div>
+
+      <h3 style="margin-top:2em">도메인별 튜닝 포인트</h3>
+      <div class="grid2">
+        <div class="card"><div class="k">의료영상</div><p>병변 <b>FN 치명</b> → Recall/Tversky·재현율 편향. 소량 라벨 → U-Net/nnU-Net·강증강·교차검증·<b>GroupNorm</b>. 경계 정밀 → Boundary 손실·Dice. 보정·불확실성으로 임상 신뢰.</p></div>
+        <div class="card"><div class="k">자율주행</div><p><b>실시간</b>(YOLO-seg·실시간 SegFormer) + <b>파놉틱</b>(Thing/Stuff). 다양한 조명·날씨 증강, Cityscapes류 벤치마크, 안전 위해 보행자 Recall 우선.</p></div>
+        <div class="card"><div class="k">위성 · 원격탐사</div><p><b>초대형 이미지</b> → 슬라이딩 윈도우/타일링. 다중 스펙트럼 채널 입력, 소형 객체 다수 → 고해상도·다중 스케일(ASPP).</p></div>
+        <div class="card"><div class="k">산업 검사 · 제조</div><p>결함 <b>작고 희소</b> → 고해상도·타일링·불균형 손실·합성 결함 증강(Copy-Paste). <b>FN(불량 놓침) 치명</b> → Recall 우선, 이상탐지 병행.</p></div>
+      </div>
+
+      <p style="margin-top:24px;font-family:var(--mono);font-size:12px;color:var(--ink-faint)">Appendix · Segmentation Tuning · Weekly Paper #09</p>
+    </section>
+
+    <!-- 12 심화 · Q&A Deep-Dive -->
+    <section id="s12">
+      <div class="eyebrow">Deep-Dive · Q&amp;A 심화</div>
+      <h2>세그멘테이션 심화 — 직접 파고든 고급 개념</h2>
+      <p>강의를 넘어 직접 의문을 풀며 정리한 핵심들. 인코더 깊이의 트레이드오프, Skip이 실제로 넘기는 값, 업샘플링 아티팩트, 모던 아키텍처의 정보 처리, 구조 용어 위계까지 — 시뮬레이션으로 확인하세요.</p>
+
+      <div class="note info"><span class="ic">D.1</span><p><code>Conv2d(512, 1, kernel=7)</code>의 가운데 <b>1은 출력 채널 수</b>(필터 1개)이지 "공간을 1×1로"가 아닙니다. 공간이 1×1이 되는 건 <b>입력 7×7 = 커널 7×7</b>이라 한 번 덮고 끝나기 때문. 10클래스면 <code>Conv2d(512,10,kernel=7)</code>→<code>[10,1,1]</code>. 가중치 25,088개는 FC와 동일 (§03 시뮬레이션 참고).</p></div>
+
+      <h3>D.4 인코더 깊이 — 공간 정밀(Where) ↓ vs 의미 추상(What) ↑</h3>
+      <p>인코더가 깊어질수록 특징맵 <code>C×H×W</code>에서 <strong>H·W는 줄고 C는 늘어납니다.</strong> 동시에 정보의 '질'이 바뀌죠 — 위치 정밀도는 떨어지고, 의미(클래스)는 또렷해집니다. 슬라이더로 깊이를 바꿔보세요.</p>
+      <div class="stage">
+        <div class="slider-row" style="margin-top:0"><label>인코더 깊이 (레이어) <span class="val" id="depVal">1단계</span></label><input type="range" id="depRange" min="0" max="5" value="0"></div>
+        <svg id="depSvg" viewBox="0 0 520 250" class="demo-svg"></svg>
+        <p class="footnote" id="depDesc"></p>
+      </div>
+      <div class="note tip"><span class="ic">왜 Skip?</span><p>"완벽 정밀 공간 + 고도 추상 의미"를 <b>동시에 100% 가진 단일 피처맵은 없습니다.</b> 그래서 깊은 피처맵(의미)에 얕은 피처맵(위치)을 Skip으로 빌려와 합칩니다 — 시력 2.0의 눈을 빌리는 똑똑이.</p></div>
+
+      <h3>D.3 Skip이 넘기는 값의 정체 — 픽셀이 아니라 '반응 점수'</h3>
+      <p>Skip Connection이 디코더로 넘기는 건 원본 픽셀값(0~255)이 <strong>아닙니다.</strong> 합성곱·활성화(ReLU)를 거친 <strong>특징맵(활성화 값) 큐브 전체</strong> — 각 채널은 특정 패턴의 '검출기'이고, 칸의 숫자는 "그 패턴이 여기 얼마나 강한가"의 점수입니다. 채널을 클릭해보세요.</p>
+      <div class="stage">
+        <svg id="actSvg" viewBox="0 0 520 145" class="demo-svg"></svg>
+        <p class="footnote" id="actDesc"></p>
+      </div>
+
+      <h3>D.6 업샘플링 — 전치합성곱 커널과 체커보드 아티팩트</h3>
+      <p>전치합성곱(stride 2)에서 <strong>커널이 stride로 나눠떨어지지 않으면</strong> 출력 칸마다 겹치는 횟수가 들쭉날쭉해져 <strong>체커보드</strong>가 생깁니다. 칸 색 = 그 자리가 커널에 덮인 횟수(중첩 횟수). 커널을 바꿔보세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="tc2">2×2 / s2</button>
+          <button class="tg" id="tc3">3×3 / s2</button>
+          <button class="tg" id="tc4">4×4 / s2</button>
+        </div>
+        <svg id="tcSvg" viewBox="0 0 520 268" class="demo-svg"></svg>
+        <p class="footnote" id="tcoDesc"></p>
+      </div>
+      <div class="note imp"><span class="ic">교정</span><p>"2×2면 체커보드"는 부정확. 2×2·4×4는 stride로 <b>나눠떨어져 불균일 중첩이 없습니다</b>(2×2=비중첩 블록감, 4×4=중첩으로 매끄러움). 진짜 체커보드는 <b>3×3처럼 안 나눠떨어질 때</b>. 최신 트렌드는 <b>resize-conv</b>(Bilinear 업샘플 → 3×3 conv)로 아티팩트를 근본 회피.</p></div>
+
+      <h3>D.7 모던 아키텍처는 공간·채널을 어떻게 다루나</h3>
+      <p>CNN은 <code>C×H×W</code> 격자 큐브를 유지하지만, 모던 아키텍처는 격자를 깨고 <strong>토큰·쿼리·프롬프트</strong>로 다룹니다. 계열을 눌러 인코더·버틀넥·디코더의 정보 처리를 비교하세요.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="paCnn">CNN (U-Net)</button>
+          <button class="tg" id="paTf">Transformer</button>
+          <button class="tg" id="paYolo">YOLO-Seg</button>
+          <button class="tg" id="paSam">SAM</button>
+        </div>
+        <svg id="paraSvg" viewBox="0 0 520 250" class="demo-svg"></svg>
+        <p class="footnote" id="paraDesc"></p>
+      </div>
+
+      <h3>D.8 구조 용어 위계 — 백본 · 넥 · 헤드 · 브랜치</h3>
+      <p>논문·코드에서 섞이는 용어를 위계로. 모델을 선택하면 <strong>백본→넥→헤드(→브랜치)</strong>로 어떻게 조립됐는지 분해해 보여줍니다.</p>
+      <div class="stage">
+        <div class="toggle-row" style="margin-top:0">
+          <button class="tg on" id="anMrcnn">Mask R-CNN</button>
+          <button class="tg" id="anYolo">YOLOv8-Seg</button>
+          <button class="tg" id="anM2f">Mask2Former</button>
+        </div>
+        <svg id="anaSvg" viewBox="0 0 520 260" class="demo-svg"></svg>
+        <p class="footnote" id="anaDesc"></p>
+      </div>
+      <div class="note info"><span class="ic">치트시트</span><p><b>백본</b>=특징 추출기(ResNet·Swin) · <b>넥</b>=다중 스케일 융합(FPN·PANet) · <b>헤드</b>=최종 출력단(Loss 직전) · <b>브랜치</b>=헤드 속 병렬 경로 · <b>태스크 아키텍처</b>=Two/Single/Query 패러다임 · <b>모델</b>=조립+학습된 <code>.pt</code>.</p></div>
+    </section>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $=(s,p=document)=>p.querySelector(s);
+const $$=(s,p=document)=>[...p.querySelectorAll(s)];
+const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+const navlinks=$$('.rail a.nav');
+window.addEventListener('scroll',()=>{const h=document.documentElement;$('#scanline').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';},{passive:true});
+const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){navlinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id));}});},{rootMargin:'-45% 0px -50% 0px'});
+$$('section').forEach(s=>io.observe(s));
+document.addEventListener('keydown',(e)=>{
+  if(['INPUT','BUTTON','TEXTAREA'].includes(e.target.tagName))return;
+  if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return; e.preventDefault();
+  const secs=$$('section'); const y=window.scrollY+window.innerHeight*0.4;
+  let idx=secs.findIndex(s=>s.offsetTop>y); if(idx===-1)idx=secs.length;
+  const t=e.key==='ArrowDown'?secs[Math.min(idx,secs.length-1)]:secs[Math.max(idx-2,0)];
+  t&&t.scrollIntoView({behavior:reduce?'auto':'smooth'});
+});
+
+const SCENE={sky:'#3a6ea5',road:'#5d6b7a',tree:'#46e3a3',car:'#f7bb3f',person:'#fb6f7d'};
+
+/* recognizable object silhouettes (so segmentation visibly follows the object outline, not a box) */
+function silPerson(x,y,w,h,fill,op){
+  op=(op==null)?0.82:op;
+  const cx=x+w/2, hr=Math.min(w*0.34,h*0.15), hy=y+hr+2, sw=w*0.46;
+  const N=function(v){return v.toFixed(1);};
+  const p=`M${N(cx-sw*0.42)},${N(hy+hr*0.5)} Q${N(cx-sw)},${N(hy+hr*0.9)} ${N(cx-sw)},${N(hy+hr+h*0.16)} L${N(cx-w*0.30)},${N(y+h)} L${N(cx-w*0.07)},${N(y+h)} L${N(cx)},${N(hy+hr+h*0.42)} L${N(cx+w*0.07)},${N(y+h)} L${N(cx+w*0.30)},${N(y+h)} L${N(cx+sw)},${N(hy+hr+h*0.16)} Q${N(cx+sw)},${N(hy+hr*0.9)} ${N(cx+sw*0.42)},${N(hy+hr*0.5)} Z`;
+  return `<circle cx="${N(cx)}" cy="${N(hy)}" r="${N(hr)}" fill="${fill}" opacity="${op}"/><path d="${p}" fill="${fill}" opacity="${op}"/>`;
+}
+function silTree(x,y,w,h,fill,op){
+  op=(op==null)?0.82:op;
+  const N=function(v){return v.toFixed(1);};
+  const cx=x+w/2, fr=w*0.40, fy=y+fr*0.95, tw=w*0.15, tTop=y+h*0.52;
+  return `<rect x="${N(cx-tw/2)}" y="${N(tTop)}" width="${N(tw)}" height="${N(y+h-tTop)}" fill="${fill}" opacity="${op}"/>`+
+    `<circle cx="${N(cx)}" cy="${N(fy)}" r="${N(fr)}" fill="${fill}" opacity="${op}"/>`+
+    `<circle cx="${N(cx-fr*0.58)}" cy="${N(fy+fr*0.5)}" r="${N(fr*0.62)}" fill="${fill}" opacity="${op}"/>`+
+    `<circle cx="${N(cx+fr*0.58)}" cy="${N(fy+fr*0.5)}" r="${N(fr*0.62)}" fill="${fill}" opacity="${op}"/>`;
+}
+function silCar(x,y,w,h,fill,op){
+  op=(op==null)?0.82:op;
+  const N=function(v){return v.toFixed(1);};
+  const bodyY=y+h*0.42, bodyH=h*0.40, wr=h*0.15, wy=y+h*0.84;
+  const cabin=`<path d="M${N(x+w*0.26)},${N(bodyY)} L${N(x+w*0.36)},${N(y+h*0.12)} Q${N(x+w*0.40)},${N(y+h*0.04)} ${N(x+w*0.48)},${N(y+h*0.04)} L${N(x+w*0.60)},${N(y+h*0.04)} Q${N(x+w*0.68)},${N(y+h*0.05)} ${N(x+w*0.72)},${N(bodyY)} Z" fill="${fill}" opacity="${op}"/>`;
+  const body=`<rect x="${N(x+w*0.04)}" y="${N(bodyY)}" width="${N(w*0.92)}" height="${N(bodyH)}" rx="${N(h*0.16)}" fill="${fill}" opacity="${op}"/>`;
+  const wheels=`<circle cx="${N(x+w*0.26)}" cy="${N(wy)}" r="${N(wr)}" fill="${fill}" opacity="${op}"/><circle cx="${N(x+w*0.74)}" cy="${N(wy)}" r="${N(wr)}" fill="${fill}" opacity="${op}"/>`;
+  return cabin+body+wheels;
+}
+
+/* 01 scene */
+(function(){
+  const svg=$('#sceneSvg'); if(!svg)return;
+  function render(seg){
+    const T={x:40,y:56,w:104,h:170}, P={x:212,y:118,w:56,h:130}, C={x:330,y:162,w:162,h:86};
+    let s;
+    if(!seg){
+      s=`<rect x="0" y="0" width="520" height="206" fill="#2a3a52"/><rect x="0" y="206" width="520" height="94" fill="#3a4756"/>`;
+      s+=silTree(T.x,T.y,T.w,T.h,'#3f6b4e',0.96)+silPerson(P.x,P.y,P.w,P.h,'#6b4a52',0.96)+silCar(C.x,C.y,C.w,C.h,'#7a6a3a',0.96);
+      s+=`<rect x="150" y="18" width="220" height="38" rx="8" fill="rgba(7,11,19,.82)" stroke="#37dcef"/><text x="260" y="43" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="15" fill="#37dcef" font-weight="700">"거리 풍경" ✓</text>`;
+    } else {
+      s=`<rect x="0" y="0" width="520" height="200" fill="${SCENE.sky}" opacity="0.5"/><rect x="0" y="200" width="520" height="100" fill="${SCENE.road}" opacity="0.5"/>`;
+      s+=silTree(T.x,T.y,T.w,T.h,SCENE.tree,0.82)+silPerson(P.x,P.y,P.w,P.h,SCENE.person,0.82)+silCar(C.x,C.y,C.w,C.h,SCENE.car,0.82);
+      s+=`<text x="${T.x+T.w/2}" y="${T.y-6}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#46e3a3" font-weight="700">나무</text>`;
+      s+=`<text x="${P.x+P.w/2}" y="${P.y-6}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#fb6f7d" font-weight="700">사람</text>`;
+      s+=`<text x="${C.x+C.w/2}" y="${C.y-6}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#f7bb3f" font-weight="700">자동차</text>`;
+    }
+    svg.innerHTML=s;
+    $('#vCls').classList.toggle('on',!seg); $('#vSeg').classList.toggle('on',seg);
+    $('#sceneLegend').innerHTML = seg ? Object.entries({하늘:SCENE.sky,도로:SCENE.road,나무:SCENE.tree,자동차:SCENE.car,사람:SCENE.person}).map(function(e){return `<span><i style="background:${e[1]}"></i>${e[0]}</span>`;}).join('') : '';
+    $('#sceneDesc').textContent = seg ? '모든 픽셀에 클래스를 부여 — 박스가 아니라 물체 윤곽을 그대로 따라 칠합니다. 단, 자동차가 여러 대여도 같은 "자동차"(개체 구분 X).' : '이미지 전체에 라벨 1개. "무엇이 어디에"는 알려주지 않습니다.';
+  }
+  $('#vCls').addEventListener('click',function(){render(false);}); $('#vSeg').addEventListener('click',function(){render(true);}); render(false);
+})();
+
+/* 02 ladder */
+(function(){
+  const svg=$('#ladderSvg'), host=$('#ladder'); if(!svg)return;
+  const R=[['Classification','이 사진은 무엇인가 → 라벨 1개'],['Object Detection','무엇이 어디에 → 박스+라벨'],['Semantic Seg.','모든 픽셀이 무엇 (개체 구분 X)'],['Instance Seg.','픽셀 + 누구의 것 (셀 수 있는 것)'],['Panoptic Seg.','Thing(개체)+Stuff(배경) 전부']];
+  host.innerHTML=R.map(function(r,i){return `<div class="rung" data-i="${i}"><span class="num">0${i+1}</span><span class="nm">${r[0]}</span><span class="ds">${r[1]}</span></div>`;}).join('');
+  const T={x:26,y:54,w:92,h:164}, P={x:170,y:114,w:54,h:130}, C1={x:280,y:156,w:132,h:84}, C2={x:402,y:166,w:106,h:72};
+  function bgPhoto(){return `<rect x="0" y="0" width="520" height="205" fill="#2a3a52"/><rect x="0" y="205" width="520" height="95" fill="#3a4756"/>`;}
+  function bgSeg(){return `<rect x="0" y="0" width="520" height="205" fill="${SCENE.sky}" opacity="0.5"/><rect x="0" y="205" width="520" height="95" fill="${SCENE.road}" opacity="0.5"/>`;}
+  function objsPhoto(){return silTree(T.x,T.y,T.w,T.h,'#3f6b4e',0.96)+silPerson(P.x,P.y,P.w,P.h,'#6b4a52',0.96)+silCar(C1.x,C1.y,C1.w,C1.h,'#7a6a3a',0.96)+silCar(C2.x,C2.y,C2.w,C2.h,'#6a5d34',0.96);}
+  function bbox(o,c,t){return `<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" fill="none" stroke="${c}" stroke-width="2.4"/><rect x="${o.x}" y="${o.y-15}" width="44" height="14" fill="${c}"/><text x="${o.x+5}" y="${o.y-4}" font-family="JetBrains Mono,monospace" font-size="9" fill="#04141a" font-weight="700">${t}</text>`;}
+  function lab(cx,cy,t,col){return `<text x="${cx}" y="${cy}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="${col||'#04141a'}" font-weight="700">${t}</text>`;}
+  function draw(stage){
+    let s;
+    if(stage===0){ s=bgPhoto()+objsPhoto()+`<rect x="150" y="16" width="220" height="34" rx="8" fill="rgba(7,11,19,.82)" stroke="#37dcef"/><text x="260" y="39" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="14" fill="#37dcef" font-weight="700">"거리 풍경"</text>`; }
+    else if(stage===1){ s=bgPhoto()+objsPhoto()+bbox(T,'#46e3a3','tree')+bbox(P,'#fb6f7d','person')+bbox(C1,'#f7bb3f','car')+bbox(C2,'#f7bb3f','car'); }
+    else if(stage===2){ s=bgSeg()+silTree(T.x,T.y,T.w,T.h,SCENE.tree)+silPerson(P.x,P.y,P.w,P.h,SCENE.person)+silCar(C1.x,C1.y,C1.w,C1.h,SCENE.car)+silCar(C2.x,C2.y,C2.w,C2.h,SCENE.car)+lab(66,28,'하늘','#cfe9f5')+lab(66,294,'도로','#cfe9f5')+lab(T.x+T.w/2,T.y+32,'나무')+lab(P.x+P.w/2,P.y+P.h*0.6,'사람')+lab(C1.x+C1.w/2,C1.y+C1.h*0.56,'자동차')+lab(C2.x+C2.w/2,C2.y+C2.h*0.56,'자동차'); }
+    else if(stage===3){ s=bgSeg()+silTree(T.x,T.y,T.w,T.h,SCENE.tree)+silPerson(P.x,P.y,P.w,P.h,SCENE.person)+silCar(C1.x,C1.y,C1.w,C1.h,SCENE.car)+silCar(C2.x,C2.y,C2.w,C2.h,'#f59ce0')+lab(T.x+T.w/2,T.y+32,'나무')+lab(P.x+P.w/2,P.y+P.h*0.6,'사람')+lab(C1.x+C1.w/2,C1.y+C1.h*0.56,'차1')+lab(C2.x+C2.w/2,C2.y+C2.h*0.56,'차2'); }
+    else { s=bgSeg()+silTree(T.x,T.y,T.w,T.h,SCENE.tree)+silPerson(P.x,P.y,P.w,P.h,SCENE.person)+silCar(C1.x,C1.y,C1.w,C1.h,SCENE.car)+silCar(C2.x,C2.y,C2.w,C2.h,'#f59ce0')+lab(66,28,'하늘 (Stuff)','#cfe9f5')+lab(66,294,'도로 (Stuff)','#cfe9f5')+lab(T.x+T.w/2,T.y+32,'나무')+lab(P.x+P.w/2,P.y+P.h*0.6,'사람')+lab(C1.x+C1.w/2,C1.y+C1.h*0.56,'차1')+lab(C2.x+C2.w/2,C2.y+C2.h*0.56,'차2'); }
+    svg.innerHTML=s;
+  }
+  function set(i){$$('.rung',host).forEach(function(r){r.classList.toggle('on',+r.dataset.i===i);}); draw(i);}
+  $$('.rung',host).forEach(function(r){r.addEventListener('click',function(){set(+r.dataset.i);});}); set(0);
+})();
+
+/* 03 FCN */
+(function(){
+  const svg=$('#fcnSvg'); if(!svg)return;
+  function draw(conv){
+    let s=`<rect x="0" y="0" width="520" height="230" fill="transparent"/><text x="60" y="26" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#9fb0cf">특징맵 7×7</text>`;
+    for(let r=0;r<5;r++)for(let c=0;c<5;c++) s+=`<rect x="${24+c*16}" y="${38+r*16}" width="14" height="14" rx="2" fill="#16213a" stroke="#27395a"/>`;
+    s+=`<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#37dcef"/></marker></defs><path d="M130 93 h60" stroke="#37dcef" stroke-width="1.5" marker-end="url(#ar)"/>`;
+    if(!conv){
+      s+=`<text x="300" y="26" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#fb6f7d">Flatten → FC</text>`;
+      for(let i=0;i<6;i++) s+=`<rect x="230" y="${43+i*22}" width="22" height="18" rx="3" fill="#2a1c24" stroke="#fb6f7d"/>`;
+      s+=`<path d="M260 93 h50" stroke="#fb6f7d" stroke-width="1.5"/><rect x="320" y="76" width="120" height="34" rx="6" fill="rgba(251,111,125,.12)" stroke="#fb6f7d"/><text x="380" y="98" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="13" fill="#fb6f7d" font-weight="700">라벨 1개</text><text x="270" y="180" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="12" fill="#9fb0cf">공간 정보 소실 · 입력 크기 고정</text>`;
+    } else {
+      s+=`<text x="300" y="26" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#46e3a3">1×1 conv (전부 합성곱)</text>`;
+      for(let r=0;r<5;r++)for(let c=0;c<5;c++){const on=(r+c)%3===0; s+=`<rect x="${230+c*16}" y="${38+r*16}" width="14" height="14" rx="2" fill="${on?'#1b3a33':'#16213a'}" stroke="${on?'#46e3a3':'#27395a'}"/>`;}
+      s+=`<path d="M330 93 h40" stroke="#46e3a3" stroke-width="1.5"/><rect x="378" y="38" width="116" height="110" rx="6" fill="rgba(70,227,163,.10)" stroke="#46e3a3"/><text x="436" y="90" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#46e3a3" font-weight="700">클래스</text><text x="436" y="106" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#46e3a3" font-weight="700">지도(H×W)</text><text x="300" y="180" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="12" fill="#9fb0cf">공간 보존 · 임의 입력 크기 OK</text>`;
+    }
+    svg.innerHTML=s;
+    $('#fcFC').classList.toggle('on',!conv); $('#fcConv').classList.toggle('on',conv);
+    $('#fcnDesc').textContent = conv ? 'FC를 1×1 합성곱으로 바꾸면 벡터 1개 대신 클래스별 공간 히트맵이 나오고, 입력 크기 제약도 사라집니다.' : 'Flatten+FC는 2D 격자를 1D 벡터로 붕괴시켜 위치를 버리고, 가중치 수가 입력에 묶여 고정 크기만 받습니다.';
+  }
+  $('#fcFC').addEventListener('click',function(){draw(false);}); $('#fcConv').addEventListener('click',function(){draw(true);}); draw(false);
+})();
+
+/* 04 Transposed convolution animation */
+(function(){
+  const svg=$('#tconvSvg'); if(!svg)return;
+  const IN=[[2,1,0],[1,3,1],[0,1,2]];
+  const N=3, S=2, K=3, OUT=(N-1)*S+K; // 7
+  let step=-1;
+  function blank(){return Array.from({length:OUT},function(){return Array(OUT).fill(0);});}
+  let acc=blank();
+  function recompute(upto){ acc=blank(); for(let i=0;i<=upto;i++){ const r=Math.floor(i/N), c=i%N, v=IN[r][c]; for(let kr=0;kr<K;kr++)for(let kc=0;kc<K;kc++){ acc[r*S+kr][c*S+kc]+=v; } } }
+  function draw(){
+    const ig=22, ox=20, oy=40, og=24, oox=250, ooy=22;
+    let s=`<text x="20" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#9fb0cf">입력 3×3</text><text x="250" y="16" font-family="JetBrains Mono,monospace" font-size="11" fill="#9fb0cf">출력 7×7 (stride 2)</text>`;
+    const cr=step>=0?Math.floor(step/N):-1, cc=step>=0?step%N:-1;
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++){ const cur=(r===cr&&c===cc); s+=`<rect x="${ox+c*ig}" y="${oy+r*ig}" width="20" height="20" rx="3" fill="${cur?'#37dcef':'#16213a'}" stroke="${cur?'#37dcef':'#27395a'}"/><text x="${ox+c*ig+10}" y="${oy+r*ig+14}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="${cur?'#04141a':'#9fb0cf'}" font-weight="700">${IN[r][c]}</text>`; }
+    for(let r=0;r<OUT;r++)for(let c=0;c<OUT;c++){
+      const inStamp = step>=0 && r>=cr*S && r<cr*S+K && c>=cc*S && c<cc*S+K;
+      const v=acc[r][c];
+      const bg = inStamp ? 'rgba(247,187,63,.55)' : (v>0?`rgba(70,227,163,${Math.min(0.5, v*0.12+0.12)})`:'#0d1626');
+      s+=`<rect x="${oox+c*og}" y="${ooy+r*og}" width="${og-2}" height="${og-2}" rx="2" fill="${bg}" stroke="#27395a" stroke-width="0.8"/>`;
+      if(v>0) s+=`<text x="${oox+c*og+(og-2)/2}" y="${ooy+r*og+15}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#dff4fb">${v}</text>`;
+    }
+    svg.innerHTML=s;
+    $('#tcDesc').textContent = step<0 ? '입력 9칸 중 0칸 처리. "다음 입력 칸"을 눌러 도장을 하나씩 찍어보세요.' : `입력 ${step+1}/9칸 처리. 현재 칸 값 ${IN[cr][cc]}을(를) 3×3 커널로 출력 (${cr*S},${cc*S})~ 위치에 찍었습니다. 겹치는 칸은 값이 더해집니다.`;
+  }
+  $('#tcStep').addEventListener('click',function(){ if(step<N*N-1){ step++; recompute(step); draw(); } });
+  $('#tcAll').addEventListener('click',function(){ step=N*N-1; recompute(step); draw(); });
+  $('#tcReset').addEventListener('click',function(){ step=-1; acc=blank(); draw(); });
+  draw();
+})();
+
+/* 05 skip slider */
+(function(){
+  const svg=$('#skipSvg'), rng=$('#skipRange'); if(!svg)return;
+  const NAMES=['FCN-32s','FCN-16s','FCN-8s'], DESC=['스킵 없음 — 가장 거친 경계(블록처럼 뭉개짐).','한 단계 결합 — 경계가 더 또렷.','두 단계 결합 — 가장 또렷한 경계.'];
+  function blob(cx,cy,jit){let p='';const Nn=24;for(let i=0;i<Nn;i++){const a=i/Nn*Math.PI*2,rr=46+(i%2?14:0),j=Math.round(Math.sin(i*3.3)*jit);p+=`${(cx+Math.cos(a)*(rr+j)).toFixed(0)},${(cy+Math.sin(a)*(rr+j)).toFixed(0)} `;}return p;}
+  function draw(l){const jit=[16,7,1][l];
+    let s=`<polygon points="${blob(180,100,0)}" fill="none" stroke="#94a4f2" stroke-width="1.5" stroke-dasharray="5 4"/><text x="180" y="186" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#94a4f2">정답(GT) 경계</text>`;
+    s+=`<polygon points="${blob(360,100,jit)}" fill="rgba(55,220,239,.18)" stroke="#37dcef" stroke-width="2"/><text x="360" y="186" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#37dcef">${NAMES[l]} 예측</text>`;
+    svg.innerHTML=s; $('#skipName').textContent=NAMES[l]; $('#skipDesc').textContent=DESC[l];
+  }
+  rng.addEventListener('input',function(e){draw(+e.target.value);}); draw(0);
+})();
+
+/* 05b Add vs Concatenate */
+(function(){
+  const svg=$('#fuseSvg'); if(!svg)return;
+  function draw(concat){
+    let s=`<rect x="0" y="0" width="520" height="200" fill="transparent"/>`;
+    s+=`<rect x="40" y="55" width="50" height="90" rx="5" fill="rgba(148,164,242,.18)" stroke="#94a4f2"/><text x="65" y="45" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#94a4f2">인코더 (C)</text>`;
+    s+=`<rect x="110" y="55" width="50" height="90" rx="5" fill="rgba(55,220,239,.16)" stroke="#37dcef"/><text x="135" y="45" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#37dcef">디코더 (C)</text>`;
+    s+=`<text x="200" y="106" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="22" fill="#9fb0cf">${concat?'⊕':'+'}</text>`;
+    if(!concat){
+      s+=`<rect x="300" y="55" width="50" height="90" rx="5" fill="rgba(70,227,163,.18)" stroke="#46e3a3"/><text x="325" y="45" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#46e3a3">합 (C채널)</text>`;
+      s+=`<text x="375" y="100" font-family="Pretendard,sans-serif" font-size="13" fill="#9fb0cf">원소별 더하기 →</text><text x="375" y="121" font-family="Pretendard,sans-serif" font-size="13" fill="#9fb0cf">한 덩어리로 섞임</text>`;
+    } else {
+      s+=`<rect x="300" y="55" width="50" height="90" rx="5" fill="rgba(148,164,242,.18)" stroke="#94a4f2"/><rect x="352" y="55" width="50" height="90" rx="5" fill="rgba(55,220,239,.16)" stroke="#37dcef"/><text x="351" y="45" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#46e3a3">이어붙임 (2C)</text>`;
+      s+=`<text x="418" y="100" font-family="Pretendard,sans-serif" font-size="13" fill="#9fb0cf">나란히 쌓음 →</text><text x="418" y="121" font-family="Pretendard,sans-serif" font-size="13" fill="#9fb0cf">둘 다 보존</text>`;
+    }
+    svg.innerHTML=s;
+    $('#mAdd').classList.toggle('on',!concat); $('#mConcat').classList.toggle('on',concat);
+    $('#fuseDesc').textContent = concat ? 'Concatenate(U-Net): 채널이 2C로 늘고 두 정보가 보존됨 → 뒤 합성곱이 어느 쪽을 쓸지 학습해 선택.' : 'Add(FCN): 원소별로 더해 채널 수 그대로(C). 두 정보가 한 덩어리로 섞임.';
+  }
+  $('#mAdd').addEventListener('click',function(){draw(false);}); $('#mConcat').addEventListener('click',function(){draw(true);}); draw(false);
+})();
+
+/* 06 RoI Align vs Pooling */
+(function(){
+  const svg=$('#roiSvg'), rng=$('#roiRange'); if(!svg)return;
+  let mode='pool';
+  const G=8, cell=30, ox=30, oy=20;
+  const boxW=4.2, boxH=3.4;
+  function draw(){
+    const px=+rng.value/100;
+    const x1=1+px, y1=2.0, x2=x1+boxW, y2=y1+boxH;
+    $('#roiPos').textContent='x = '+x1.toFixed(2);
+    let s=`<rect x="0" y="0" width="520" height="280" fill="transparent"/>`;
+    for(let r=0;r<G;r++)for(let c=0;c<G;c++) s+=`<rect x="${ox+c*cell}" y="${oy+r*cell}" width="${cell}" height="${cell}" fill="#0d1626" stroke="#1d2c46" stroke-width="1"/>`;
+    const fx=function(v){return ox+v*cell;}, fy=function(v){return oy+v*cell;};
+    s+=`<rect x="${fx(x1)}" y="${fy(y1)}" width="${boxW*cell}" height="${boxH*cell}" fill="none" stroke="#37dcef" stroke-width="2" stroke-dasharray="5 4"/><text x="${fx(x1)}" y="${fy(y1)-6}" font-family="JetBrains Mono,monospace" font-size="10" fill="#37dcef">정밀 박스 (${x1.toFixed(1)},${y1.toFixed(1)})</text>`;
+    if(mode==='pool'){
+      const rx1=Math.round(x1),ry1=Math.round(y1),rx2=Math.round(x2),ry2=Math.round(y2);
+      s+=`<rect x="${fx(rx1)}" y="${fy(ry1)}" width="${(rx2-rx1)*cell}" height="${(ry2-ry1)*cell}" fill="rgba(247,187,63,.18)" stroke="#f7bb3f" stroke-width="2.4"/><text x="${fx(rx1)}" y="${fy(ry2)+16}" font-family="JetBrains Mono,monospace" font-size="10" fill="#f7bb3f">반올림 박스 (${rx1},${ry1})</text>`;
+      $('#roiDesc').textContent=`RoI Pooling: 소수점 (${x1.toFixed(2)},${y1.toFixed(2)})을 정수 (${rx1},${ry1})로 반올림 → 앰버 박스가 정밀 박스(시안 점선)와 어긋납니다. 슬라이더를 움직이면 정수 칸 단위로 '툭툭' 점프(양자화 오차).`;
+    } else {
+      const bins=3, bw=boxW/bins, bh=boxH/bins;
+      for(let br=0;br<bins;br++)for(let bc=0;bc<bins;bc++){ for(let sr=0;sr<2;sr++)for(let sc=0;sc<2;sc++){ const sx=x1+(bc+(sc+0.5)/2)*bw, sy=y1+(br+(sr+0.5)/2)*bh; s+=`<circle cx="${fx(sx)}" cy="${fy(sy)}" r="3" fill="#46e3a3"/>`; } }
+      s+=`<rect x="${fx(x1)}" y="${fy(y1)}" width="${boxW*cell}" height="${boxH*cell}" fill="rgba(70,227,163,.10)" stroke="#46e3a3" stroke-width="2"/><text x="${fx(x1)}" y="${fy(y2)+16}" font-family="JetBrains Mono,monospace" font-size="10" fill="#46e3a3">정렬 유지 + 보간 샘플점</text>`;
+      $('#roiDesc').textContent=`RoI Align: 반올림하지 않고 정밀 박스 그대로. 초록 점은 양선형 보간으로 값을 직접 계산하는 샘플 지점 — 슬라이더를 움직이면 점들이 '부드럽게' 따라가며 위치가 보존됩니다.`;
+    }
+    svg.innerHTML=s;
+  }
+  $('#roiPool').addEventListener('click',function(){mode='pool';$('#roiPool').classList.add('on');$('#roiAlign').classList.remove('on');draw();});
+  $('#roiAlign').addEventListener('click',function(){mode='align';$('#roiAlign').classList.add('on');$('#roiPool').classList.remove('on');draw();});
+  rng.addEventListener('input',draw); draw();
+})();
+
+/* 07 IoU vs Dice */
+(function(){
+  const svg=$('#iouSvg'), rng=$('#ovRange'); if(!svg)return;
+  const W=140,H=120, ax=30, ay=80;
+  function draw(){
+    const ov=+rng.value/100;            // overlap fraction of width
+    const bx=ax+W-ov*W;                  // B slides left over A
+    const interW=Math.max(0,(ax+W)-bx);
+    const inter=interW*H, A=W*H, B=W*H, uni=A+B-inter;
+    const iou = uni>0 ? inter/uni : 0;
+    const dice = (A+B)>0 ? (2*inter)/(A+B) : 0;
+    let s=`<rect x="0" y="0" width="360" height="280" fill="transparent"/>`;
+    // intersection highlight (behind outlines)
+    if(interW>0) s+=`<rect x="${bx}" y="${ay}" width="${interW}" height="${H}" fill="rgba(70,227,163,.40)"/>`;
+    // A (cyan) and B (violet)
+    s+=`<rect x="${ax}" y="${ay}" width="${W}" height="${H}" fill="rgba(55,220,239,.14)" stroke="#37dcef" stroke-width="2"/><text x="${ax+8}" y="${ay+20}" font-family="JetBrains Mono,monospace" font-size="12" fill="#37dcef" font-weight="700">A (정답)</text>`;
+    s+=`<rect x="${bx}" y="${ay}" width="${W}" height="${H}" fill="rgba(148,164,242,.12)" stroke="#94a4f2" stroke-width="2"/><text x="${bx+W-8}" y="${ay+H-10}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="12" fill="#94a4f2" font-weight="700">B (예측)</text>`;
+    if(interW>0) s+=`<text x="${bx+interW/2}" y="${ay+H+22}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#46e3a3">∩ 교집합</text>`;
+    svg.innerHTML=s;
+    $('#ovVal').textContent=Math.round(ov*100)+'%';
+    $('#iouNum').textContent=iou.toFixed(2);
+    $('#diceNum').textContent=dice.toFixed(2);
+    $('#iouFill').style.width=(iou*100).toFixed(1)+'%';
+    $('#diceFill').style.width=(dice*100).toFixed(1)+'%';
+  }
+  rng.addEventListener('input',draw); draw();
+})();
+
+/* 05c Atrous conv (static) */
+(function(){
+  const svg=$('#atrousSvg'); if(!svg)return;
+  const cell=26, gap=2, oy=42;
+  function grid(ox, taps, label, sub){
+    const span=5*(cell+gap);
+    let s=`<text x="${ox+span/2}" y="${oy-20}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="#9fb0cf">${label}</text>`;
+    s+=`<text x="${ox+span/2}" y="${oy-5}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#5d7099">${sub}</text>`;
+    for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+      const on=taps.some(function(t){return t[0]===r&&t[1]===c;});
+      s+=`<rect x="${ox+c*(cell+gap)}" y="${oy+r*(cell+gap)}" width="${cell}" height="${cell}" rx="3" fill="${on?'#37dcef':'#0d1626'}" stroke="${on?'#37dcef':'#27395a'}"/>`;
+    }
+    return s;
+  }
+  const normal=[]; for(let r=1;r<=3;r++)for(let c=1;c<=3;c++) normal.push([r,c]);
+  const dil=[]; for(let r=0;r<5;r+=2)for(let c=0;c<5;c+=2) dil.push([r,c]);
+  let s=`<rect x="0" y="0" width="520" height="200" fill="transparent"/>`;
+  s+=grid(70, normal, '일반 3×3 (dilation=1)', '수용영역 3×3 · 가중치 9');
+  s+=grid(310, dil, '팽창 3×3 (dilation=2)', '수용영역 5×5 · 가중치 9 그대로');
+  s+=`<text x="260" y="208" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="12" fill="#9fb0cf">같은 9개 가중치로 더 넓게 — 다운샘플 없이 수용영역만 ↑</text>`;
+  svg.innerHTML=s;
+})();
+
+/* 01b pixel-level labeling */
+(function(){
+  const svg=$('#pxSvg'); if(!svg)return;
+  const COLS=20, ROWS=12, cell=20;
+  const CLS={sky:{c:'#3a6ea5',n:'하늘'},tree:{c:'#46e3a3',n:'나무'},person:{c:'#fb6f7d',n:'사람'},car:{c:'#f7bb3f',n:'자동차'},road:{c:'#5d6b7a',n:'도로'}};
+  const ORD=['sky','tree','person','car','road'];
+  const IDX={sky:0,tree:1,person:2,car:3,road:4};
+  // build label matrix by stamping recognizable silhouettes (so colored region follows the object outline)
+  const LBL=[];
+  for(let r=0;r<ROWS;r++){ const row=[]; for(let c=0;c<COLS;c++) row.push(r>=10?'road':'sky'); LBL.push(row); }
+  function stamp(sprite,r0,c0,ch){ for(let i=0;i<sprite.length;i++){ for(let j=0;j<sprite[i].length;j++){ if(sprite[i][j]!=='.') LBL[r0+i][c0+j]=ch; } } }
+  stamp(['.TTT.','TTTTT','TTTTT','.TTT.','..T..','..T..','..T..'],1,0,'tree');
+  stamp(['.P.','PPP','PPP','.P.','P.P','P.P'],4,6,'person');
+  stamp(['...CC...','.CCCCCC.','CCCCCCCC','.C....C.'],6,11,'car');
+  function cls(r,c){ return LBL[r][c]; }
+  // boundary cells (for plausible "추론 오답"): pick a spread of edge pixels
+  const BND=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){ const t=cls(r,c); let nb=null; [[-1,0],[1,0],[0,-1],[0,1]].forEach(function(d){ const rr=r+d[0],cc=c+d[1]; if(rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&cls(rr,cc)!==t&&nb===null) nb=cls(rr,cc); }); if(nb) BND.push([r,c,nb]); }
+  const ERRS=[]; const stepB=Math.max(1,Math.floor(BND.length/6)); for(let i=0;i<BND.length&&ERRS.length<6;i+=stepB) ERRS.push(BND[i]);
+  function pred(r,c){ for(let i=0;i<ERRS.length;i++){ if(ERRS[i][0]===r&&ERRS[i][1]===c) return ERRS[i][2]; } return cls(r,c); }
+  const RAW={sky:'#2f5a86',tree:'#2f6f4a',person:'#7a4046',car:'#7a6a3a',road:'#46515f'};
+  let mode='raw', sel=null;
+  function draw(){
+    let s='';
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+      const t=cls(r,c), pc=(mode==='pred')?pred(r,c):t;
+      const key=(mode==='label')?t:(mode==='pred'?pc:t);
+      const fill = mode==='raw'?RAW[t]:CLS[key].c;
+      const isErr = mode==='pred'&&pc!==t;
+      const seld = sel&&sel[0]===r&&sel[1]===c;
+      s+=`<rect x="${c*cell}" y="${r*cell}" width="${cell}" height="${cell}" fill="${fill}" stroke="${seld?'#fff':(isErr?'#fb6f7d':'rgba(0,0,0,.14)')}" stroke-width="${seld?2.4:(isErr?2:0.5)}" data-r="${r}" data-c="${c}"/>`;
+      if(mode!=='raw'){ const idx=IDX[key]; s+=`<text x="${c*cell+cell/2}" y="${r*cell+cell/2+3.5}" text-anchor="middle" font-size="9.5" fill="${idx===0?'rgba(255,255,255,.5)':'rgba(7,11,19,.62)'}" font-family="JetBrains Mono,monospace" pointer-events="none">${idx}</text>`; }
+    }
+    svg.innerHTML=s;
+    $('#pxRaw').classList.toggle('on',mode==='raw'); $('#pxLabel').classList.toggle('on',mode==='label'); $('#pxPred').classList.toggle('on',mode==='pred');
+    $('#pxDesc').textContent = mode==='raw'?'① 카메라가 찍은 원본. 사람 눈엔 장면이지만 모델에겐 픽셀 값(RGB) 격자일 뿐입니다.':mode==='label'?'② 정답(GT)은 픽셀마다 클래스 "숫자"를 적은 정수 행렬입니다(색은 사람이 보기 위한 표시). 물체 윤곽을 따라 숫자가 칠해집니다.':'③ 모델 추론도 픽셀마다 숫자(argmax)를 뱉습니다. 경계 몇 칸이 정답과 다릅니다(빨강 = 오답). 픽셀을 클릭해 확률을 보세요.';
+    $('#pxLegend').innerHTML = ORD.map(function(k){return `<span><i style="background:${CLS[k].c}"></i><b style="font-family:var(--mono);color:var(--ink);margin-right:2px">${IDX[k]}</b>${CLS[k].n}</span>`;}).join('');
+  }
+  function probs(r,c){
+    const t=cls(r,c); let bound=false;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(function(d){ const rr=r+d[0],cc=c+d[1]; if(rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&cls(rr,cc)!==t) bound=true; });
+    const peak=bound?0.55:0.9, rest=(1-peak)/(ORD.length-1);
+    return ORD.map(function(k){ return {k:k, p:k===t?peak:rest}; });
+  }
+  function panel(){
+    if(!sel){ $('#pxPanel').innerHTML='<div style="font-family:var(--mono);font-size:12px;color:var(--ink-faint)">픽셀을 클릭하면 그 자리의 클래스 확률 벡터가 나옵니다.</div>'; return; }
+    const r=sel[0], c=sel[1], ps=probs(r,c);
+    let am=ps[0]; ps.forEach(function(o){ if(o.p>am.p) am=o; });
+    let h=`<div style="font-family:var(--mono);font-size:12px;color:var(--ink-dim);margin-bottom:6px">픽셀 (행 ${r}, 열 ${c}) → 클래스 확률</div>`;
+    ps.forEach(function(o){
+      h+=`<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="width:52px;font-size:11px;color:var(--ink-dim)"><b style="font-family:var(--mono)">${IDX[o.k]}</b> ${CLS[o.k].n}</span><div style="flex:1;height:11px;background:var(--bg2);border:1px solid var(--line);border-radius:6px;overflow:hidden"><div style="width:${(o.p*100).toFixed(0)}%;height:100%;background:${CLS[o.k].c}"></div></div><span style="width:32px;font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${o.p.toFixed(2)}</span></div>`;
+    });
+    h+=`<div style="margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--cyan)">argmax → <b>${IDX[am.k]} · ${CLS[am.k].n}</b></div>`;
+    $('#pxPanel').innerHTML=h;
+  }
+  svg.addEventListener('click',function(e){ const t=e.target; if(t.tagName==='rect'&&t.dataset.r!==undefined){ sel=[+t.dataset.r,+t.dataset.c]; draw(); panel(); } });
+  $('#pxRaw').addEventListener('click',function(){mode='raw';draw();});
+  $('#pxLabel').addEventListener('click',function(){mode='label';draw();});
+  $('#pxPred').addEventListener('click',function(){mode='pred';draw();});
+  draw(); panel();
+})();
+
+/* 03b FC flatten vs conv cube */
+(function(){
+  const svg=$('#fvSvg'); if(!svg)return;
+  const MONO='JetBrains Mono,monospace', SANS='Pretendard,sans-serif';
+  function defs(){return `<defs><marker id="arF" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#fb6f7d"/></marker><marker id="arC" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#46e3a3"/></marker></defs>`;}
+  function cube(x,y,n,sz,col){
+    let s='';
+    for(let k=3;k>=1;k--){ const o=k*4; s+=`<rect x="${x+o}" y="${y-o}" width="${n*sz}" height="${n*sz}" rx="2" fill="${col}" opacity="0.10" stroke="#27395a" stroke-width="0.6"/>`; }
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++) s+=`<rect x="${x+c*sz}" y="${y+r*sz}" width="${sz}" height="${sz}" fill="${col}" opacity="0.16" stroke="${col}" stroke-width="0.4"/>`;
+    s+=`<rect x="${x}" y="${y}" width="${n*sz}" height="${n*sz}" fill="none" stroke="${col}" stroke-width="1.3"/>`;
+    return s;
+  }
+  function drawFlat(){
+    let s=`<rect width="520" height="300" fill="transparent"/>`+defs();
+    s+=cube(40,70,7,15,'#37dcef');
+    s+=`<text x="92" y="58" text-anchor="middle" font-size="11" fill="#9fb0cf" font-family="${MONO}">[512, 7, 7]</text>`;
+    s+=`<text x="92" y="200" text-anchor="middle" font-size="10" fill="#5d7099" font-family="${MONO}">×512 채널 (큐브)</text>`;
+    s+=`<path d="M158 115 h34" stroke="#fb6f7d" stroke-width="1.5" marker-end="url(#arF)"/><text x="175" y="106" text-anchor="middle" font-size="10" fill="#fb6f7d" font-family="${MONO}">flatten</text>`;
+    const sx=200,sy=106; for(let i=0;i<24;i++) s+=`<rect x="${sx+i*11}" y="${sy}" width="10" height="18" fill="#fb6f7d" opacity="0.20" stroke="#fb6f7d" stroke-width="0.5"/>`;
+    s+=`<text x="${sx+24*11/2}" y="${sy+36}" text-anchor="middle" font-size="9.5" fill="#fb6f7d" font-family="${MONO}">한 줄 = 25,088 (2D→1D, 위치 뒤섞임)</text>`;
+    s+=`<path d="M468 115 v34" stroke="#fb6f7d" stroke-width="1.5" marker-end="url(#arF)"/><text x="468" y="108" text-anchor="middle" font-size="9.5" fill="#9fb0cf" font-family="${MONO}">·W+b</text>`;
+    s+=`<rect x="430" y="155" width="78" height="32" rx="5" fill="rgba(251,111,125,.14)" stroke="#fb6f7d"/><text x="469" y="176" text-anchor="middle" font-size="12" fill="#fb6f7d" font-weight="700">라벨 1개</text>`;
+    s+=`<text x="260" y="258" text-anchor="middle" font-size="12.5" fill="#9fb0cf" font-family="${SANS}">2D 격자를 1D 줄로 '펼침' → <tspan fill="#fb6f7d">위치 정보 소실</tspan> · 입력 크기 고정(25,088에 묶임)</text>`;
+    svg.innerHTML=s;
+    $('#fvFlat').classList.add('on'); $('#fvConv').classList.remove('on');
+    $('#fvDesc').textContent='FC는 큐브를 한 줄로 펴서(flatten) 가중치와 곱해 더합니다 → 점수 1개. 펴는 순간 "어디에 있었는지"가 사라지고, 길이가 25,088로 고정돼 입력 크기도 묶입니다.';
+  }
+  function drawConv(){
+    let s=`<rect width="520" height="300" fill="transparent"/>`+defs();
+    s+=cube(40,42,7,12,'#46e3a3');
+    s+=`<text x="82" y="34" text-anchor="middle" font-size="9.5" fill="#9fb0cf" font-family="${MONO}">작은 입력 [512,7,7]</text>`;
+    s+=`<rect x="40" y="42" width="84" height="84" fill="none" stroke="#f7bb3f" stroke-width="2" stroke-dasharray="4 3"/>`;
+    s+=`<text x="82" y="140" text-anchor="middle" font-size="9" fill="#f7bb3f" font-family="${MONO}">7×7×512 필터가 한 번 덮음</text>`;
+    s+=`<path d="M150 84 h26" stroke="#46e3a3" stroke-width="1.5" marker-end="url(#arC)"/>`;
+    s+=`<rect x="182" y="74" width="20" height="20" fill="#46e3a3" opacity="0.55" stroke="#46e3a3"/><text x="192" y="110" text-anchor="middle" font-size="9" fill="#46e3a3" font-family="${MONO}">1×1</text>`;
+    s+=`<text x="370" y="60" text-anchor="middle" font-size="12.5" fill="#9fb0cf" font-family="${SANS}"><tspan fill="#46e3a3">큐브 모양 유지</tspan> · 위치 보존</text>`;
+    s+=`<text x="370" y="82" text-anchor="middle" font-size="12.5" fill="#9fb0cf" font-family="${SANS}">임의 입력 크기 OK</text>`;
+    s+=cube(40,176,12,9,'#46e3a3');
+    s+=`<text x="94" y="168" text-anchor="middle" font-size="9.5" fill="#9fb0cf" font-family="${MONO}">큰 입력 → 필터 슬라이딩</text>`;
+    s+=`<path d="M162 222 h24" stroke="#46e3a3" stroke-width="1.5" marker-end="url(#arC)"/>`;
+    const hx=200,hy=188; for(let r=0;r<6;r++)for(let c=0;c<6;c++){ const d=Math.hypot(r-2.7,c-3)/3.2; const v=Math.max(0,1-d); s+=`<rect x="${hx+c*15}" y="${hy+r*15}" width="14" height="14" fill="rgba(70,227,163,${(v*0.72+0.05).toFixed(2)})" stroke="#27395a" stroke-width="0.4"/>`; }
+    s+=`<text x="${hx+45}" y="${hy+104}" text-anchor="middle" font-size="9.5" fill="#46e3a3" font-family="${MONO}">위치별 점수 = "tabby cat heatmap"</text>`;
+    svg.innerHTML=s;
+    $('#fvConv').classList.add('on'); $('#fvFlat').classList.remove('on');
+    $('#fvDesc').textContent='합성곱화는 큐브를 그대로 둔 채 같은 가중치를 7×7×512 필터로 적용 → 작은 입력은 1×1(라벨), 큰 입력은 필터가 미끄러지며 위치별 점수(히트맵). 위치 보존 + 임의 입력.';
+  }
+  $('#fvFlat').addEventListener('click',drawFlat); $('#fvConv').addEventListener('click',drawConv); drawFlat();
+})();
+
+/* 05d FCN vs U-Net architecture */
+(function(){
+  const svg=$('#archSvg'); if(!svg)return;
+  const MONO='JetBrains Mono,monospace';
+  const RES=['224','112','56','28','14'], W=[100,82,66,52,42], ys=[44,80,116,152,188];
+  const EX=50, RE=470, BH=18, BNY=232;
+  let mode='unet';
+  function ebox(i){return {x:EX,y:ys[i],w:W[i]};}
+  function dbox(i){return {x:RE-W[i],y:ys[i],w:W[i]};}
+  function box(b,col,txt,op){return `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${BH}" rx="3" fill="${col}" opacity="${op||0.22}" stroke="${col}" stroke-width="1.2"/><text x="${b.x+b.w/2}" y="${b.y+13}" text-anchor="middle" font-size="9" fill="#e9f0fb" font-family="${MONO}">${txt}</text>`;}
+  function draw(){
+    let s=`<rect width="520" height="300" fill="transparent"/>`;
+    s+=`<defs><marker id="aD" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L5 3 L0 6 z" fill="#5d7099"/></marker><marker id="aS" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L5 3 L0 6 z" fill="#37dcef"/></marker><marker id="aA" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L5 3 L0 6 z" fill="#f7bb3f"/></marker></defs>`;
+    s+=`<text x="${EX+48}" y="30" text-anchor="middle" font-size="10.5" fill="#37dcef" font-family="${MONO}">인코더 ↓</text><text x="${RE-48}" y="30" text-anchor="middle" font-size="10.5" fill="#46e3a3" font-family="${MONO}">디코더 ↑</text>`;
+    for(let i=0;i<5;i++){ const b=ebox(i); s+=box(b,'#37dcef',RES[i]); if(i>0){ const p=ebox(i-1); s+=`<path d="M${p.x+12} ${p.y+BH} V${b.y-2}" stroke="#5d7099" stroke-width="1" marker-end="url(#aD)"/>`; } }
+    const bn={x:239,y:BNY,w:44}; s+=box(bn,'#94a4f2','7 BN',0.3);
+    const e4=ebox(4); s+=`<path d="M${e4.x+12} ${e4.y+BH} V${BNY+9} H${bn.x-2}" fill="none" stroke="#5d7099" stroke-width="1" marker-end="url(#aD)"/>`;
+    if(mode==='unet'){
+      for(let i=0;i<5;i++){ const b=dbox(i); s+=box(b,'#46e3a3',RES[i]); if(i<4){ const lo=dbox(i+1); s+=`<path d="M${lo.x+lo.w-12} ${lo.y} V${b.y+BH+2}" stroke="#5d7099" stroke-width="1" marker-end="url(#aD)"/>`; } }
+      const d4=dbox(4); s+=`<path d="M${bn.x+bn.w+2} ${BNY+9} H${d4.x+d4.w-12} V${d4.y+BH+2}" fill="none" stroke="#5d7099" stroke-width="1" marker-end="url(#aD)"/>`;
+      for(let i=0;i<5;i++){ const e=ebox(i), d=dbox(i); s+=`<path d="M${e.x+e.w} ${e.y+BH/2} H${d.x}" stroke="#37dcef" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#aS)"/>`; }
+      s+=`<text x="260" y="288" text-anchor="middle" font-size="10.5" fill="#37dcef" font-family="${MONO}">모든 단계 스킵 · Concatenate · 대칭 깊은 디코더</text>`;
+    } else {
+      const d4=dbox(4), d3=dbox(3);
+      s+=box(d4,'#46e3a3','+p4'); s+=box(d3,'#46e3a3','+p3');
+      const out={x:RE-100,y:ys[0],w:100}; s+=box(out,'#46e3a3','224 (8× up)',0.3);
+      s+=`<path d="M${bn.x+bn.w+2} ${BNY+9} H${d4.x+d4.w-12} V${d4.y+BH+2}" fill="none" stroke="#5d7099" stroke-width="1" marker-end="url(#aD)"/>`;
+      s+=`<path d="M${d4.x+12} ${d4.y} V${d3.y+BH+2}" stroke="#5d7099" stroke-width="1" marker-end="url(#aD)"/>`;
+      s+=`<path d="M${d3.x+12} ${d3.y} V${out.y+BH+2}" stroke="#5d7099" stroke-width="1" marker-end="url(#aD)"/>`;
+      [4,3].forEach(function(i){ const e=ebox(i), d=dbox(i); s+=`<path d="M${e.x+e.w} ${e.y+BH/2} H${d.x}" stroke="#f7bb3f" stroke-width="1.2" marker-end="url(#aA)"/><text x="${(e.x+e.w+d.x)/2}" y="${e.y+BH/2-3}" text-anchor="middle" font-size="12" fill="#f7bb3f" font-family="${MONO}">+</text>`; });
+      s+=`<text x="260" y="288" text-anchor="middle" font-size="10.5" fill="#f7bb3f" font-family="${MONO}">일부 단계만 스킵(pool3·4) · Add · 얕은 디코더</text>`;
+    }
+    svg.innerHTML=s;
+    $('#archFCN').classList.toggle('on',mode==='fcn'); $('#archUNet').classList.toggle('on',mode==='unet');
+    $('#archDesc').textContent = mode==='unet' ? 'U-Net: 인코더 모든 단계를 같은 높이 디코더로 Concatenate. 디코더도 인코더와 대칭으로 깊어 경계를 정교하게 복원합니다.' : 'FCN-8s: bottleneck을 키우며 pool4·pool3 두 단계만 Add로 더하고 크게 업샘플. 디코더가 얕아 경계가 다소 뭉툭합니다.';
+  }
+  $('#archFCN').addEventListener('click',function(){mode='fcn';draw();});
+  $('#archUNet').addEventListener('click',function(){mode='unet';draw();});
+  draw();
+})();
+
+/* 05e U-Net family */
+(function(){
+  const svg=$('#ufSvg'); if(!svg)return;
+  const MONO='JetBrains Mono,monospace';
+  let mode=0;
+  function nd(x,y,t,col){return `<circle cx="${x}" cy="${y}" r="16" fill="${col}" opacity="0.18" stroke="${col}" stroke-width="1.4"/><text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="9" fill="#e9f0fb" font-family="${MONO}">${t}</text>`;}
+  function ln(x1,y1,x2,y2,col,dash){return `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${col}" stroke-width="1.3" fill="none" ${dash?'stroke-dasharray="4 3"':''} marker-end="url(#au)"/>`;}
+  function draw(){
+    let s=`<rect width="520" height="240" fill="transparent"/>`;
+    s+=`<defs><marker id="au" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L5 3 L0 6 z" fill="#9fb0cf"/></marker></defs>`;
+    const R0=58,R1=120,R2=182;
+    if(mode===0){
+      const EX=90, DX=430;
+      s+=ln(EX,R0+16,EX,R1-16,'#5d7099')+ln(EX,R1+16,EX,R2-16,'#5d7099');
+      s+=ln(EX+16,R2,DX-16,R1+10,'#5d7099')+ln(DX,R1-16,DX,R0+16,'#5d7099');
+      s+=ln(EX+16,R0,DX-16,R0,'#37dcef',true)+ln(EX+16,R1,DX-16,R1,'#37dcef',true);
+      s+=nd(EX,R0,'E0','#37dcef')+nd(EX,R1,'E1','#37dcef')+nd(EX,R2,'BN','#94a4f2')+nd(DX,R1,'D1','#46e3a3')+nd(DX,R0,'D0','#46e3a3');
+      s+=`<text x="260" y="222" text-anchor="middle" font-size="11" fill="#37dcef" font-family="${MONO}">직접 스킵(점선) — 인코더 → 디코더 같은 높이</text>`;
+    } else if(mode===1){
+      const X=[90,200,310,420];
+      const P={'00':[X[0],R0],'01':[X[1],R0],'02':[X[2],R0],'03':[X[3],R0],'10':[X[0],R1],'11':[X[1],R1],'12':[X[2],R1],'20':[X[0],R2]};
+      function L(a,b,col,dash){return ln(P[a][0]+16,P[a][1],P[b][0]-16,P[b][1],col,dash);}
+      s+=ln(P['00'][0],P['00'][1]+16,P['10'][0],P['10'][1]-16,'#5d7099')+ln(P['10'][0],P['10'][1]+16,P['20'][0],P['20'][1]-16,'#5d7099');
+      s+=L('00','01','#37dcef',true)+L('01','02','#37dcef',true)+L('02','03','#37dcef',true)+L('10','11','#37dcef',true)+L('11','12','#37dcef',true);
+      s+=ln(P['20'][0]+12,P['20'][1]-12,P['11'][0]-12,P['11'][1]+12,'#46e3a3')+ln(P['10'][0]+12,P['10'][1]-12,P['01'][0]-12,P['01'][1]+12,'#46e3a3')+ln(P['11'][0]+12,P['11'][1]-12,P['02'][0]-12,P['02'][1]+12,'#46e3a3')+ln(P['12'][0]+12,P['12'][1]-12,P['03'][0]-12,P['03'][1]+12,'#46e3a3');
+      s+=nd(P['00'][0],P['00'][1],'X⁰⁰','#37dcef')+nd(P['01'][0],P['01'][1],'X⁰¹','#f7bb3f')+nd(P['02'][0],P['02'][1],'X⁰²','#f7bb3f')+nd(P['03'][0],P['03'][1],'X⁰³','#46e3a3');
+      s+=nd(P['10'][0],P['10'][1],'X¹⁰','#37dcef')+nd(P['11'][0],P['11'][1],'X¹¹','#f7bb3f')+nd(P['12'][0],P['12'][1],'X¹²','#f7bb3f');
+      s+=nd(P['20'][0],P['20'][1],'X²⁰','#94a4f2');
+      s+=`<text x="260" y="222" text-anchor="middle" font-size="11" fill="#f7bb3f" font-family="${MONO}">중첩 dense 노드(주황)로 스킵 간극을 촘촘히 메움 + deep supervision</text>`;
+    } else {
+      const EX=90, AGX=300, DX=440;
+      s+=ln(EX,R0+16,EX,R1-16,'#5d7099')+ln(EX,R1+16,EX,R2-16,'#5d7099');
+      s+=ln(EX+16,R2,DX-16,R1+10,'#5d7099')+ln(DX,R1-16,DX,R0+16,'#5d7099');
+      s+=ln(EX+16,R0,AGX-20,R0,'#37dcef',true)+ln(AGX+20,R0,DX-16,R0,'#37dcef',true);
+      s+=ln(EX+16,R1,AGX-20,R1,'#37dcef',true)+ln(AGX+20,R1,DX-16,R1,'#37dcef',true);
+      s+=ln(DX-6,R1-16,AGX+8,R0+12,'#fb6f7d')+ln(EX+12,R2-12,AGX-8,R1+12,'#fb6f7d');
+      function ag(x,y){return `<rect x="${x-20}" y="${y-13}" width="40" height="26" rx="5" fill="#fb6f7d" opacity="0.16" stroke="#fb6f7d" stroke-width="1.3"/><text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="9" fill="#fb6f7d" font-family="${MONO}">AG</text>`;}
+      s+=ag(AGX,R0)+ag(AGX,R1);
+      s+=nd(EX,R0,'E0','#37dcef')+nd(EX,R1,'E1','#37dcef')+nd(EX,R2,'BN','#94a4f2')+nd(DX,R1,'D1','#46e3a3')+nd(DX,R0,'D0','#46e3a3');
+      s+=`<text x="260" y="222" text-anchor="middle" font-size="11" fill="#fb6f7d" font-family="${MONO}">스킵마다 어텐션 게이트(AG) — 게이팅 신호(빨강)로 중요한 영역만 강조</text>`;
+    }
+    svg.innerHTML=s;
+    ['uf0','uf1','uf2'].forEach(function(id,i){ $('#'+id).classList.toggle('on',mode===i); });
+    $('#ufDesc').textContent=['U-Net: 인코더 노드를 같은 높이 디코더로 직접 이어붙입니다(직접 스킵).','U-Net++: 인코더-디코더 사이를 중첩된 dense 합성곱 노드(주황)로 촘촘히 메워 정보 흐름을 매끄럽게 + 각 단계 보조손실(deep supervision).','Attention U-Net: 스킵 경로마다 어텐션 게이트(AG)를 둬, 디코더의 게이팅 신호로 중요한 영역은 강하게·배경은 약하게 넘깁니다.'][mode];
+  }
+  $('#uf0').addEventListener('click',function(){mode=0;draw();});
+  $('#uf1').addEventListener('click',function(){mode=1;draw();});
+  $('#uf2').addEventListener('click',function(){mode=2;draw();});
+  draw();
+})();
+
+/* 06a Mask R-CNN pipeline */
+(function(){
+  const svg=$('#mrSvg'); if(!svg)return;
+  const MONO='JetBrains Mono,monospace';
+  const TOP=[{id:'input',x:8,w:84,t:'Input',s:'640×480×3',col:'#37dcef'},{id:'backbone',x:104,w:92,t:'Backbone',s:'ResNet',col:'#37dcef'},{id:'fmap',x:208,w:90,t:'Feature Map',s:'50×50',col:'#37dcef'},{id:'rpn',x:310,w:84,t:'RPN',s:'앵커·obj',col:'#37dcef'},{id:'roialign',x:406,w:96,t:'RoI Align',s:'7×7 정렬',col:'#94a4f2'}];
+  const HEADS=[{id:'classhead',x:34,w:126,t:'Class Head',s:'(FC) → 클래스',col:'#46e3a3'},{id:'boxhead',x:174,w:126,t:'Box Head',s:'(FC) → 박스',col:'#46e3a3'},{id:'maskhead',x:314,w:160,t:'Mask Head',s:'(Conv) → 마스크 ★',col:'#f7bb3f'}];
+  const TY=44, TH=36, HY=154, HH=40;
+  const DESC={
+    input:'입력 이미지 [640,480,3]. 원본을 백본에 통과시킵니다.',
+    backbone:'백본(ResNet): 합성곱으로 특징을 추출해 특징맵으로 압축(예: 800×800 → 50×50).',
+    fmap:'특징맵: 백본이 압축한 표현. 여기에 앵커(예: 50×50×9개)를 배치합니다.',
+    rpn:'RPN: 앵커마다 objectness(물체 확률)와 박스 조절값을 예측 → 후보 영역. 좌표는 회귀라 소수점.',
+    roialign:'RoI Align: 소수점 박스를 반올림 없이 7×7 고정 크기로 정렬(Bilinear Interpolation). 아래 시뮬레이션 참고.',
+    classhead:'Class Head(FC): 이 영역이 무슨 클래스인지. FC라 고정 7×7 입력이 필요합니다.',
+    boxhead:'Box Head(FC): 박스를 한 번 더 미세조정. FC 기반.',
+    maskhead:'Mask Head(Conv): 박스 안 어느 픽셀이 물체인지 마스크를 그림(신규!). 합성곱이라 공간을 유지합니다.'
+  };
+  let sel=null;
+  function bx(o,y,h){
+    const on=sel===o.id;
+    return `<rect x="${o.x}" y="${y}" width="${o.w}" height="${h}" rx="5" fill="${o.col}" opacity="${on?0.4:0.18}" stroke="${o.col}" stroke-width="${on?2.2:1.2}" data-id="${o.id}" style="cursor:pointer"/>`+
+      `<text x="${o.x+o.w/2}" y="${y+h/2-2}" text-anchor="middle" font-size="10" fill="#e9f0fb" font-family="${MONO}" font-weight="700" pointer-events="none">${o.t}</text>`+
+      `<text x="${o.x+o.w/2}" y="${y+h/2+12}" text-anchor="middle" font-size="8.5" fill="#9fb0cf" font-family="${MONO}" pointer-events="none">${o.s}</text>`;
+  }
+  function draw(){
+    let s=`<rect width="520" height="250" fill="transparent"/>`;
+    s+=`<defs><marker id="amr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L5 3 L0 6 z" fill="#5d7099"/></marker></defs>`;
+    for(let i=0;i<TOP.length;i++){ s+=bx(TOP[i],TY,TH); if(i>0){ const p=TOP[i-1]; s+=`<path d="M${p.x+p.w} ${TY+TH/2} H${TOP[i].x-2}" stroke="#5d7099" stroke-width="1.2" marker-end="url(#amr)"/>`; } }
+    const ra=TOP[4], rax=ra.x+ra.w/2, ray=TY+TH;
+    HEADS.forEach(function(h){ s+=`<path d="M${rax} ${ray} C ${rax} ${(ray+HY)/2}, ${h.x+h.w/2} ${(ray+HY)/2}, ${h.x+h.w/2} ${HY-2}" fill="none" stroke="#5d7099" stroke-width="1.1" marker-end="url(#amr)"/>`; });
+    HEADS.forEach(function(h){ s+=bx(h,HY,HH); });
+    s+=`<text x="260" y="${HY+HH+26}" text-anchor="middle" font-size="11" fill="#9fb0cf" font-family="${MONO}">출력 = 클래스 + 박스 + <tspan fill="#f7bb3f">마스크(픽셀)</tspan> → 개체별 인스턴스</text>`;
+    svg.innerHTML=s;
+    $('#mrDesc').textContent = sel? DESC[sel] : 'Mask R-CNN = Faster R-CNN(백본+RPN+RoI Align) + 마스크 가지. 클래스·박스·마스크를 동시에 출력합니다. 단계를 클릭하세요.';
+  }
+  svg.addEventListener('click',function(e){ const t=e.target; if(t.dataset&&t.dataset.id){ sel=(sel===t.dataset.id)?null:t.dataset.id; draw(); } });
+  draw();
+})();
+
+/* 06b Bilinear interpolation */
+(function(){
+  const svg=$('#biSvg'); if(!svg)return;
+  const MONO='JetBrains Mono,monospace';
+  const A=1.3,B=3.7,C=4.6,D=2.4;
+  const rx=$('#biRangeX'), ry=$('#biRangeY');
+  const x0=58,y0=42,S=184;
+  function draw(){
+    const w1=+rx.value/100, h1=+ry.value/100, w2=1-w1, h2=1-h1;
+    const px=x0+w1*S, py=y0+h1*S;
+    const wA=w2*h2, wB=w1*h2, wC=w1*h1, wD=w2*h1;
+    const V=wA*A+wB*B+wC*C+wD*D;
+    let s=`<rect width="300" height="290" fill="transparent"/>`;
+    s+=`<rect x="${x0}" y="${y0}" width="${px-x0}" height="${py-y0}" fill="#46e3a3" opacity="0.16"/>`;
+    s+=`<rect x="${px}" y="${y0}" width="${x0+S-px}" height="${py-y0}" fill="#f7bb3f" opacity="0.16"/>`;
+    s+=`<rect x="${x0}" y="${py}" width="${px-x0}" height="${y0+S-py}" fill="#94a4f2" opacity="0.16"/>`;
+    s+=`<rect x="${px}" y="${py}" width="${x0+S-px}" height="${y0+S-py}" fill="#fb6f7d" opacity="0.16"/>`;
+    s+=`<rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="none" stroke="#27395a" stroke-width="1.2"/>`;
+    s+=`<path d="M${px} ${y0} V${y0+S} M${x0} ${py} H${x0+S}" stroke="#5d7099" stroke-width="1" stroke-dasharray="4 3"/>`;
+    function corner(x,y,nm,val,col,ax,ay){ return `<circle cx="${x}" cy="${y}" r="4" fill="${col}"/><text x="${x+ax}" y="${y+ay}" text-anchor="middle" font-size="10" fill="${col}" font-family="${MONO}" font-weight="700">${nm}(${val})</text>`; }
+    s+=corner(x0,y0,'A',A,'#fb6f7d',12,-6);
+    s+=corner(x0+S,y0,'B',B,'#94a4f2',-12,-6);
+    s+=corner(x0+S,y0+S,'C',C,'#46e3a3',-12,16);
+    s+=corner(x0,y0+S,'D',D,'#f7bb3f',12,16);
+    s+=`<circle cx="${px}" cy="${py}" r="5" fill="#fff" stroke="#fb6f7d" stroke-width="2"/><text x="${px+9}" y="${py-8}" font-size="11" fill="#e9f0fb" font-family="${MONO}" font-weight="700">P</text>`;
+    s+=`<text x="${(x0+px)/2}" y="${y0-6}" text-anchor="middle" font-size="9" fill="#9fb0cf" font-family="${MONO}">w₁=${w1.toFixed(2)}</text>`;
+    s+=`<text x="${(px+x0+S)/2}" y="${y0-6}" text-anchor="middle" font-size="9" fill="#9fb0cf" font-family="${MONO}">w₂=${w2.toFixed(2)}</text>`;
+    s+=`<text x="${x0-6}" y="${(y0+py)/2+3}" text-anchor="end" font-size="9" fill="#9fb0cf" font-family="${MONO}">h₁=${h1.toFixed(2)}</text>`;
+    s+=`<text x="${x0-6}" y="${(py+y0+S)/2+3}" text-anchor="end" font-size="9" fill="#9fb0cf" font-family="${MONO}">h₂=${h2.toFixed(2)}</text>`;
+    s+=`<text x="150" y="${y0+S+30}" text-anchor="middle" font-size="13" fill="#37dcef" font-family="${MONO}" font-weight="700">V(P) = ${V.toFixed(2)}</text>`;
+    svg.innerHTML=s;
+    $('#biW').textContent=w1.toFixed(2); $('#biH').textContent=h1.toFixed(2);
+    $('#biFormula').innerHTML='V(P) = w₂h₂·A + w₁h₂·B + w₂h₁·D + w₁h₁·C<br>'+
+      '= '+wA.toFixed(2)+'·A + '+wB.toFixed(2)+'·B + '+wD.toFixed(2)+'·D + '+wC.toFixed(2)+'·C<br>'+
+      '= '+(wA*A).toFixed(3)+' + '+(wB*B).toFixed(3)+' + '+(wD*D).toFixed(3)+' + '+(wC*C).toFixed(3)+'<br>'+
+      '= <b style="color:var(--cyan)">'+V.toFixed(3)+'</b>';
+  }
+  rx.addEventListener('input',draw); ry.addEventListener('input',draw); draw();
+})();
+
+/* 09 model selection scatter */
+(function(){
+  const svg=$('#msSvg'); if(!svg)return;
+  const MONO='JetBrains Mono,monospace';
+  const X0=72,X1=502,Y0=30,Y1=228;
+  const M=[
+    {id:'m2f',n:'Mask2Former',sx:0.27,sy:0.95,c:'#94a4f2',st:'트랜스포머 + 마스크 쿼리(masked attention)',fn:'시맨틱·인스턴스·파놉틱을 한 구조로 통합 · SOTA',wh:'최고 정확도·파놉틱이 필요하고 복잡도가 정당화될 때'},
+    {id:'nnu',n:'nnU-Net',sx:0.5,sy:0.84,c:'#46e3a3',st:'U자 인코더-디코더(CNN) + 자동 구성',fn:'소량 데이터·의료에 강함(트랜스포머가 못 따라옴)',wh:'의료영상·데이터가 적을 때 1순위'},
+    {id:'yolo',n:'YOLO-seg',sx:0.92,sy:0.62,c:'#f7bb3f',st:'1-Stage(후보 없이 한 번에 마스크)',fn:'33+ FPS 실시간 · 엣지/온디바이스',wh:'실시간·정해진 클래스, 약간의 정확도 양보 OK'},
+    {id:'sam',n:'SAM 3',sx:0.16,sy:0.5,c:'#37dcef',st:'파운데이션: 프롬프트(점·박스·텍스트) 인코더 + 마스크 디코더',fn:'제로샷·오픈보캐뷸러리 · 단 도메인 특화 정확도는 낮음',wh:'추론 배포보다 오토라벨링(박스→마스크)에 진가'}
+  ];
+  let sel=null;
+  function px(s){return X0+s*(X1-X0);}
+  function py(s){return Y1-s*(Y1-Y0);}
+  function draw(){
+    let s=`<rect width="520" height="280" fill="transparent"/>`;
+    s+=`<line x1="${X0}" y1="${Y1}" x2="${X1}" y2="${Y1}" stroke="#27395a" stroke-width="1"/><line x1="${X0}" y1="${Y0}" x2="${X0}" y2="${Y1}" stroke="#27395a" stroke-width="1"/>`;
+    s+=`<text x="${(X0+X1)/2}" y="${Y1+26}" text-anchor="middle" font-size="11" fill="#9fb0cf" font-family="${MONO}">추론 속도 (느림 → 빠름)</text>`;
+    s+=`<text x="${X0-8}" y="${Y0-12}" text-anchor="start" font-size="11" fill="#9fb0cf" font-family="${MONO}">정확도·통합성 ↑</text>`;
+    s+=`<text x="${X1-4}" y="${Y1-8}" text-anchor="end" font-size="9.5" fill="#5d7099" font-family="${MONO}">← 실시간 영역</text>`;
+    M.forEach(function(m){
+      const x=px(m.sx), y=py(m.sy), on=sel===m.id, r=on?22:19;
+      s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${m.c}" opacity="${on?0.34:0.18}" stroke="${m.c}" stroke-width="${on?2.4:1.4}" data-id="${m.id}" style="cursor:pointer"/>`;
+      s+=`<text x="${x}" y="${y+r+13}" text-anchor="middle" font-size="10.5" fill="${m.c}" font-family="${MONO}" font-weight="700" pointer-events="none">${m.n}</text>`;
+    });
+    svg.innerHTML=s;
+    if(sel){ const m=M.find(function(o){return o.id===sel;}); $('#msDesc').innerHTML=`<b style="color:${m.c}">${m.n}</b> · <b>구조</b> ${m.st} · <b>기능</b> ${m.fn} · <b>언제</b> ${m.wh}`; }
+    else $('#msDesc').textContent='버블을 클릭하면 구조·기능·용도가 나옵니다. 오른쪽=빠름(실시간), 위=정확/통합. SAM 3는 정확도 축보다 "오토라벨링 도구"로 읽으세요.';
+  }
+  svg.addEventListener('click',function(e){ const t=e.target; if(t.dataset&&t.dataset.id){ sel=(sel===t.dataset.id)?null:t.dataset.id; draw(); } });
+  draw();
+})();
+
+/* ===== 12 Deep-Dive ===== */
+/* D.4 encoder depth tradeoff */
+(function(){
+  const svg=$('#depSvg'), r=$('#depRange'); if(!svg||!r)return;
+  const MONO='JetBrains Mono,monospace';
+  const SP=['224','112','56','28','14','7'], CH=[64,128,256,512,512,512];
+  const spat=[1.0,0.82,0.62,0.42,0.26,0.14], sem=[0.12,0.3,0.5,0.7,0.86,0.96];
+  const WHAT=['선·반점 수준(단순)','간단한 윤곽·코너','질감·부분 패턴','물체 부분(눈·바퀴)','거의 클래스 개념','확고한 의미(고양이·차)'];
+  const WHERE=['픽셀 1:1 정밀','매우 정밀','정밀','다소 뭉개짐','많이 뭉개짐','사분면 수준'];
+  function draw(){
+    const i=+r.value, side=44+spat[i]*94, cx=120, cyy=150, x=cx-side/2, y=cyy-side/2;
+    let s=`<rect width="520" height="250" fill="transparent"/>`;
+    const nd=Math.round(CH[i]/64);
+    for(let k=nd;k>=1;k--){ const o=k*3.0; s+=`<rect x="${(x+o).toFixed(1)}" y="${(y-o).toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="3" fill="#37dcef" opacity="0.08" stroke="#27395a" stroke-width="0.5"/>`; }
+    s+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="3" fill="#37dcef" opacity="0.16" stroke="#37dcef" stroke-width="1.3"/>`;
+    s+=`<text x="${cx}" y="${(cyy+4).toFixed(0)}" text-anchor="middle" font-size="13" fill="#cfe9f5" font-family="${MONO}" font-weight="700">${SP[i]}×${SP[i]}</text>`;
+    s+=`<text x="${cx}" y="34" text-anchor="middle" font-size="11" fill="#5d7099" font-family="${MONO}">특징맵 큐브 — 깊을수록 작고 두꺼움</text>`;
+    s+=`<text x="${cx}" y="${(y+side+26).toFixed(0)}" text-anchor="middle" font-size="11" fill="#9fb0cf" font-family="${MONO}">C=${CH[i]} · H×W=${SP[i]}²</text>`;
+    const bx=268, bw=200;
+    function bar(by,label,val,col){ return `<text x="${bx}" y="${by-6}" font-size="11" fill="#9fb0cf" font-family="${MONO}">${label}</text><rect x="${bx}" y="${by}" width="${bw}" height="16" rx="8" fill="#0d1320" stroke="#1c2942"/><rect x="${bx}" y="${by}" width="${(bw*val).toFixed(0)}" height="16" rx="8" fill="${col}"/><text x="${bx+bw+8}" y="${by+13}" font-size="11" fill="${col}" font-family="${MONO}">${(val*100).toFixed(0)}%</text>`; }
+    s+=bar(112,'공간 정밀도 (Where)',spat[i],'#46e3a3');
+    s+=bar(164,'의미 추상도 (What)',sem[i],'#f7bb3f');
+    svg.innerHTML=s;
+    $('#depVal').textContent=(i+1)+'단계';
+    $('#depDesc').textContent=`깊이 ${i+1} — 공간: ${WHERE[i]} / 의미: ${WHAT[i]}. ${i<2?'얕은 층: 위치는 정밀하나 의미는 빈약.':(i>3?'깊은 층: 의미는 확고하나 위치가 뭉개짐 → 그래서 Skip이 필요.':'중간 층: 위치·의미 절충.')}`;
+  }
+  r.addEventListener('input',draw); draw();
+})();
+
+/* D.3 skip carries activation feature map (response scores) */
+(function(){
+  const svg=$('#actSvg'); if(!svg)return; const MONO='JetBrains Mono,monospace';
+  const CHS=[
+    {n:'CH0 수직선|',t:'vert',d:'세로선 검출기. 값이 클수록 그 위치에 뚜렷한 세로 엣지가 있다는 뜻.'},
+    {n:'CH1 수평선—',t:'horz',d:'가로선 검출기. 가로 엣지의 반응 강도.'},
+    {n:'CH2 대각선/',t:'diag',d:'대각 엣지 검출기.'},
+    {n:'CH3 색경계',t:'edge',d:'빨강→파랑처럼 색이 변하는 경계의 반응.'},
+    {n:'CH4 바퀴○',t:'ring',d:'원형(바퀴 등) 패턴 검출기. 깊은 층일수록 이런 의미 특징.'},
+    {n:'CH5 질감',t:'tex',d:'질감/점 패턴 검출기.'}
+  ];
+  function val(t,r,c){
+    if(t==='vert') return c===2?0.95:(Math.abs(c-2)===1?0.4:0.05);
+    if(t==='horz') return r===2?0.95:(Math.abs(r-2)===1?0.4:0.05);
+    if(t==='diag') return r===c?0.95:(Math.abs(r-c)===1?0.4:0.05);
+    if(t==='edge') return 0.1+0.85*(c/4);
+    if(t==='ring'){ const d=Math.abs(Math.hypot(r-2,c-2)-1.5); return d<0.7?0.9:0.06; }
+    return ((r*7+c*13)%5)/5*0.8+0.06;
+  }
+  let sel=0;
+  function draw(){
+    let s=`<rect width="520" height="145" fill="transparent"/>`;
+    const tw=55, gap=(520-6*tw)/7;
+    for(let ci=0;ci<6;ci++){
+      const ox=gap+ci*(tw+gap), oy=24, cell=tw/5, on=sel===ci;
+      s+=`<rect x="${(ox-4).toFixed(1)}" y="${oy-4}" width="${tw+8}" height="${tw+8}" rx="6" fill="transparent" pointer-events="all" stroke="${on?'#37dcef':'#1c2942'}" stroke-width="${on?2:1}" data-ch="${ci}" style="cursor:pointer"/>`;
+      for(let rr=0;rr<5;rr++)for(let cc=0;cc<5;cc++){ const v=val(CHS[ci].t,rr,cc); s+=`<rect x="${(ox+cc*cell).toFixed(1)}" y="${(oy+rr*cell).toFixed(1)}" width="${cell.toFixed(1)}" height="${cell.toFixed(1)}" fill="rgba(55,220,239,${v.toFixed(2)})" stroke="#0b1018" stroke-width="0.4" pointer-events="none"/>`; }
+      s+=`<text x="${(ox+tw/2).toFixed(1)}" y="${oy+tw+16}" text-anchor="middle" font-size="9.5" fill="${on?'#37dcef':'#9fb0cf'}" font-family="${MONO}" pointer-events="none">${CHS[ci].n}</text>`;
+    }
+    s+=`<text x="260" y="118" text-anchor="middle" font-size="11" fill="#5d7099" font-family="${MONO}">각 채널 = 패턴 검출기 · 칸 밝기 = 반응 점수(0~∞, ReLU) · RGB 픽셀 아님</text>`;
+    svg.innerHTML=s;
+    $('#actDesc').textContent=`${CHS[sel].n} — ${CHS[sel].d} Skip은 이런 "위치별 반응 점수표" 큐브(C×H×W)를 통째로 디코더에 넘깁니다.`;
+  }
+  svg.addEventListener('click',function(e){ const t=e.target; if(t.dataset&&t.dataset.ch!==undefined){ sel=+t.dataset.ch; draw(); } });
+  draw();
+})();
+
+/* D.6 transposed conv overlap / checkerboard */
+(function(){
+  const svg=$('#tcSvg'); if(!svg)return; const MONO='JetBrains Mono,monospace';
+  let k=2;
+  function cov1d(kk){ const s=2,n=7,L=(n-1)*s+kk,cov=new Array(L).fill(0); for(let i=0;i<n;i++)for(let j=0;j<kk;j++)cov[i*s+j]++; return cov.slice(3,3+8); }
+  const COL={1:'rgba(70,227,163,0.22)',2:'rgba(55,220,239,0.5)',4:'rgba(251,111,125,0.7)',3:'rgba(247,187,63,0.5)'};
+  function draw(){
+    const cx=cov1d(k); const cell=24, ox=(520-8*cell)/2, oy=30;
+    let s=`<rect width="520" height="268" fill="transparent"/>`;
+    let maxc=1; for(let r=0;r<8;r++)for(let c=0;c<8;c++){ maxc=Math.max(maxc,cx[r]*cx[c]); }
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){ const v=cx[r]*cx[c]; const col=COL[v]||`rgba(148,164,242,${(0.2+0.6*v/maxc).toFixed(2)})`; s+=`<rect x="${(ox+c*cell).toFixed(1)}" y="${oy+r*cell}" width="${cell-1}" height="${cell-1}" fill="${col}" stroke="#0b1018" stroke-width="0.5"/><text x="${(ox+c*cell+cell/2).toFixed(1)}" y="${oy+r*cell+cell/2+3}" text-anchor="middle" font-size="8.5" fill="#cfe9f5" font-family="${MONO}">${v}</text>`; }
+    s+=`<text x="260" y="22" text-anchor="middle" font-size="10.5" fill="#9fb0cf" font-family="${MONO}">출력 칸별 중첩 횟수 (커널이 덮은 횟수)</text>`;
+    const uneven = (k===3);
+    s+=`<text x="260" y="${oy+8*cell+26}" text-anchor="middle" font-size="12.5" fill="${uneven?'#fb6f7d':'#46e3a3'}" font-family="Pretendard,sans-serif">${uneven?'들쭉날쭉(1·2·4) → 체커보드 발생':'균일한 중첩 → 아티팩트 없음'}</text>`;
+    svg.innerHTML=s;
+    $('#tc2').classList.toggle('on',k===2); $('#tc3').classList.toggle('on',k===3); $('#tc4').classList.toggle('on',k===4);
+    $('#tcoDesc').textContent = k===2?'2×2/s2: 모든 칸이 정확히 1번씩 덮임 → 불균일 없음. 다만 겹침(블렌딩)이 없어 블록처럼 각질 수 있음.':k===3?'3×3/s2: 3은 2로 안 나눠떨어져 칸마다 1·2·4번으로 들쭉날쭉 → 전형적 체커보드(최악).':'4×4/s2: 중앙이 모두 4번으로 고르게 겹침 → 가장 부드러움(전치합성곱 표준).';
+  }
+  $('#tc2').addEventListener('click',function(){k=2;draw();});
+  $('#tc3').addEventListener('click',function(){k=3;draw();});
+  $('#tc4').addEventListener('click',function(){k=4;draw();});
+  draw();
+})();
+
+/* D.7 modern architecture paradigms */
+(function(){
+  const svg=$('#paraSvg'); if(!svg)return; const MONO='JetBrains Mono,monospace';
+  const PARA={
+    cnn:{enc:['C×H×W 큐브','↓ 풀링'],bn:['최소 H×W',''],dec:['큐브 ↑','+ Skip(Concat)'],where:'격자 H×W + Skip Connection',what:'특징맵 깊이 C',col:'#37dcef'},
+    tf:{enc:['N×C 토큰','+ 위치인코딩'],bn:['윈도우·병합',''],dec:['Object Query','+ Cross-Attn'],where:'Positional Encoding(채널에 주입)',what:'토큰(Token) 벡터',col:'#94a4f2'},
+    yolo:{enc:['CSPDarknet',''],bn:['PANet','교차 융합'],dec:['Protonet ×','Coeff 행렬곱'],where:'Protonet 공간 템플릿',what:'마스크 계수(Coefficient)',col:'#f7bb3f'},
+    sam:{enc:['무거운 ViT','Image Embed'],bn:['Prompt Encoder','점/박스/텍스트'],dec:['경량 Decoder','Two-way Attn'],where:'프롬프트로 직접 지시(Skip 없음)',what:'ViT 임베딩에 내재',col:'#46e3a3'}
+  };
+  let mode='cnn';
+  function pbox(x,w,title,arr,col){ return `<rect x="${x}" y="62" width="${w}" height="74" rx="7" fill="${col}" opacity="0.14" stroke="${col}" stroke-width="1.3"/><text x="${x+w/2}" y="82" text-anchor="middle" font-size="11" fill="${col}" font-family="${MONO}" font-weight="700">${title}</text><text x="${x+w/2}" y="106" text-anchor="middle" font-size="10.5" fill="#cfe9f5" font-family="${MONO}">${arr[0]}</text><text x="${x+w/2}" y="123" text-anchor="middle" font-size="10.5" fill="#9fb0cf" font-family="${MONO}">${arr[1]}</text>`; }
+  function draw(){
+    const p=PARA[mode];
+    let s=`<rect width="520" height="250" fill="transparent"/>`;
+    s+=`<defs><marker id="apa" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L5 3 L0 6 z" fill="#5d7099"/></marker></defs>`;
+    s+=`<text x="20" y="44" font-size="11" fill="#5d7099" font-family="${MONO}">인코더 → 버틀넥 → 디코더</text>`;
+    s+=pbox(18,150,'인코더',p.enc,p.col)+pbox(186,128,'버틀넥',p.bn,p.col)+pbox(332,170,'디코더',p.dec,p.col);
+    s+=`<path d="M168 99 h16" stroke="#5d7099" stroke-width="1.4" marker-end="url(#apa)"/><path d="M314 99 h16" stroke="#5d7099" stroke-width="1.4" marker-end="url(#apa)"/>`;
+    s+=`<rect x="18" y="168" width="484" height="30" rx="6" fill="#46e3a3" opacity="0.08" stroke="#27395a"/><text x="30" y="187" font-size="11" fill="#46e3a3" font-family="${MONO}" font-weight="700">공간(Where)</text><text x="118" y="187" font-size="11.5" fill="#e9f0fb" font-family="${MONO}">${p.where}</text>`;
+    s+=`<rect x="18" y="204" width="484" height="30" rx="6" fill="#f7bb3f" opacity="0.08" stroke="#27395a"/><text x="30" y="223" font-size="11" fill="#f7bb3f" font-family="${MONO}" font-weight="700">채널(What)</text><text x="118" y="223" font-size="11.5" fill="#e9f0fb" font-family="${MONO}">${p.what}</text>`;
+    svg.innerHTML=s;
+    ['cnn','tf','yolo','sam'].forEach(function(m){ const b=$('#pa'+(m==='cnn'?'Cnn':m==='tf'?'Tf':m==='yolo'?'Yolo':'Sam')); if(b)b.classList.toggle('on',mode===m); });
+    $('#paraDesc').textContent={cnn:'CNN/U-Net: C×H×W 격자 큐브를 물리적으로 유지. 줄였다 키우며 Skip(Concat)으로 위치 복원.',tf:'Transformer: 격자를 토큰(N×C)으로 분해, 위치는 Positional Encoding으로 주입. 디코더는 Object Query + Cross-Attention.',yolo:'YOLO-Seg: CNN 백본 + PANet 융합 후, 디코더에서 공간(Protonet 템플릿)과 채널(계수)을 분리해 행렬곱으로 마스크.',sam:'SAM: 무거운 ViT가 Skip 없이 Image Embedding에 공간+의미를 융합. 프롬프트(점/박스)로 위치 지시, 경량 Two-way Attention 디코더.'}[mode];
+  }
+  $('#paCnn').addEventListener('click',function(){mode='cnn';draw();});
+  $('#paTf').addEventListener('click',function(){mode='tf';draw();});
+  $('#paYolo').addEventListener('click',function(){mode='yolo';draw();});
+  $('#paSam').addEventListener('click',function(){mode='sam';draw();});
+  draw();
+})();
+
+/* D.8 model anatomy hierarchy */
+(function(){
+  const svg=$('#anaSvg'); if(!svg)return; const MONO='JetBrains Mono,monospace';
+  const ANA={
+    mrcnn:{task:'Two-Stage · Instance',backbone:'ResNet-50',neck:'FPN',head:'RPN → RoI Align',branch:'Class · Box · Mask'},
+    yolo:{task:'Single-Stage · anchor-free',backbone:'CSPDarknet',neck:'PANet',head:'Decoupled Head',branch:'Detect · Protonet · Coeff'},
+    m2f:{task:'Universal · Query-based',backbone:'Swin Transformer',neck:'Pixel Decoder',head:'Transformer Decoder',branch:'Class · Mask-embed · Queries'}
+  };
+  let mode='mrcnn';
+  function band(y,label,content,col){ return `<rect x="40" y="${y}" width="440" height="40" rx="7" fill="${col}" opacity="0.14" stroke="${col}" stroke-width="1.2"/><text x="58" y="${y+25}" font-size="11" fill="${col}" font-family="${MONO}" font-weight="700">${label}</text><text x="148" y="${y+25}" font-size="12.5" fill="#e9f0fb" font-family="${MONO}">${content}</text>`; }
+  function draw(){
+    const a=ANA[mode];
+    let s=`<rect width="520" height="260" fill="transparent"/>`;
+    s+=`<defs><marker id="aan" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L5 3 L0 6 z" fill="#5d7099"/></marker></defs>`;
+    s+=`<rect x="160" y="14" width="200" height="26" rx="13" fill="#f59ce0" opacity="0.14" stroke="#f59ce0"/><text x="260" y="31" text-anchor="middle" font-size="11" fill="#f59ce0" font-family="${MONO}" font-weight="700">태스크: ${a.task}</text>`;
+    s+=band(54,'브랜치',a.branch,'#f7bb3f');
+    s+=band(104,'헤드',a.head,'#46e3a3');
+    s+=band(154,'넥',a.neck,'#94a4f2');
+    s+=band(204,'백본',a.backbone,'#37dcef');
+    // upward data-flow arrows (백본→넥→헤드→브랜치)
+    [204,154,104].forEach(function(y){ s+=`<path d="M30 ${y} V${y-10}" stroke="#5d7099" stroke-width="1.3" marker-end="url(#aan)"/>`; });
+    svg.innerHTML=s;
+    ['mrcnn','yolo','m2f'].forEach(function(m){ const b=$('#an'+(m==='mrcnn'?'Mrcnn':m==='yolo'?'Yolo':'M2f')); if(b)b.classList.toggle('on',mode===m); });
+    $('#anaDesc').textContent={mrcnn:'Mask R-CNN = 백본 ResNet + 넥 FPN + 1단계 RPN/2단계 RoI Align 후 Class·Box·Mask 브랜치. 정확하지만 무거움.',yolo:'YOLOv8-Seg = 백본 CSPDarknet + 넥 PANet + Decoupled Head(Protonet·Coeff 브랜치 → 행렬곱). 실시간.',m2f:'Mask2Former = 백본 Swin + 넥 Pixel Decoder + Transformer Decoder(Object Queries, Skip 대신 쿼리). 시맨틱·인스턴스·파놉틱 통합.'}[mode];
+  }
+  $('#anMrcnn').addEventListener('click',function(){mode='mrcnn';draw();});
+  $('#anYolo').addEventListener('click',function(){mode='yolo';draw();});
+  $('#anM2f').addEventListener('click',function(){mode='m2f';draw();});
+  draw();
+})();
+</script>
+</body>
+</html>
