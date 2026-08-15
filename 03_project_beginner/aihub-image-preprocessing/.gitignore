@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+
+# Local model checkpoints and generated datasets are intentionally not versioned.
+models/
+*.pt
+*.pth
+*.ckpt
+
+# Generated reports can be very large; keep only curated markdown handoff docs.
+reports/*
+!reports/*.md
+
+# Local/generated dataset artifacts.
+processed/
+outputs/
+*.tar
+*.zip
+*.parquet
+*.jsonl

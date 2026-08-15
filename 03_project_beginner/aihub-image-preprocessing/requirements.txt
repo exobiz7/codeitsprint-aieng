@@ -1,0 +1,7 @@
+Pillow>=10.0
+numpy>=1.26
+opencv-python-headless>=4.9
+pyarrow>=15.0
+torch>=2.5.1
+torchvision>=0.20.1
+sam2>=1.1.0

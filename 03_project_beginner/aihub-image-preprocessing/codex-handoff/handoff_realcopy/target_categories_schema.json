@@ -1,0 +1,562 @@
+[
+ {
+  "id": 1900,
+  "name": "보령부스파정 5mg",
+  "supercategory": "pill",
+  "product_id": "K-001900",
+  "class_index": 0,
+  "shape": "장방형",
+  "color": "하양",
+  "imprint_front": "BSP"
+ },
+ {
+  "id": 2483,
+  "name": "뮤테란캡슐 100mg",
+  "supercategory": "pill",
+  "product_id": "K-002483",
+  "class_index": 1,
+  "shape": "장방형",
+  "color": "초록",
+  "imprint_front": "Hanwha MUC100"
+ },
+ {
+  "id": 3351,
+  "name": "일양하이트린정 2mg",
+  "supercategory": "pill",
+  "product_id": "K-003351",
+  "class_index": 2,
+  "shape": "원형",
+  "color": "주황",
+  "imprint_front": "I분할선Y"
+ },
+ {
+  "id": 3483,
+  "name": "기넥신에프정(은행엽엑스)(수출용)",
+  "supercategory": "pill",
+  "product_id": "K-003483",
+  "class_index": 3,
+  "shape": "장방형",
+  "color": "초록",
+  "imprint_front": "SK"
+ },
+ {
+  "id": 3544,
+  "name": "무코스타정(레바미피드)(비매품)",
+  "supercategory": "pill",
+  "product_id": "K-003544",
+  "class_index": 4,
+  "shape": "원형",
+  "color": "하양",
+  "imprint_front": "OG33"
+ },
+ {
+  "id": 3743,
+  "name": "알드린정",
+  "supercategory": "pill",
+  "product_id": "K-003743",
+  "class_index": 5,
+  "shape": "원형",
+  "color": "하양",
+  "imprint_front": "ALT"
+ },
+ {
+  "id": 3832,
+  "name": "뉴로메드정(옥시라세탐)",
+  "supercategory": "pill",
+  "product_id": "K-003832",
+  "class_index": 6,
+  "shape": "장방형",
+  "color": "하양",
+  "imprint_front": "NR800"
+ },
+ {
+  "id": 4543,
+  "name": "에어탈정(아세클로페낙)",
+  "supercategory": "pill",
+  "product_id": "K-004543",
+  "class_index": 7,
+  "shape": "원형",
+  "color": "하양",
+  "imprint_front": "Airtal"
+ },
+ {
+  "id": 12081,
+  "name": "리렉스펜정 300mg/PTP",
+  "supercategory": "pill",
+  "product_id": "K-012081",
+  "class_index": 8,
+  "shape": "장방형",
+  "color": "하양",
+  "imprint_front": "HMP"
+ },
+ {
+  "id": 12247,
+  "name": "아빌리파이정 10mg",
+  "supercategory": "pill",
+  "product_id": "K-012247",
+  "class_index": 9,
+  "shape": "장방형",
+  "color": "분홍",
+  "imprint_front": "A-008 10"
+ },
+ {
+  "id": 12778,
+  "name": "다보타민큐정 10mg/병",
+  "supercategory": "pill",
+  "product_id": "K-012778",
+  "class_index": 10,
+  "shape": "타원형",
+  "color": "갈색",
+  "imprint_front": "Y분할선H"
+ },
+ {
+  "id": 13395,
+  "name": "써스펜8시간이알서방정 650mg",
+  "supercategory": "pill",
+  "product_id": "K-013395",
+  "class_index": 11,
+  "shape": "장방형",
+  "color": "하양",
+  "imprint_front": "SUSPEN  ER"
+ },
+ {
+  "id": 13900,
+  "name": "에빅사정(메만틴염산염)(비매품)",
+  "supercategory": "pill",
+  "product_id": "K-013900",
+  "class_index": 12,
+  "shape": "타원형",
+  "color": "노랑",
+  "imprint_front": "M분할선"
+ },
+ {
+  "id": 16232,
+  "name": "리피토정 20mg",
+  "supercategory": "pill",
+  "product_id": "K-016232",
+  "class_index": 13,
+  "shape": "원형",
+  "color": "하양",
+  "imprint_front": "ATV"
+ },
+ {
+  "id": 16262,
+  "name": "크레스토정 20mg",
+  "supercategory": "pill",
+  "product_id": "K-016262",
+  "class_index": 14,
+  "shape": "원형",
+  "color": "분홍",
+  "imprint_front": "ZD452220"
+ },
+ {
+  "id": 16548,
+  "name": "가바토파정 100mg",
+  "supercategory": "pill",
+  "product_id": "K-016548",
+  "class_index": 15,
+  "shape": "",
+  "color": "",
+  "imprint_front": ""
+ },
+ {
+  "id": 16551,
+  "name": "동아가바펜틴정 800mg",
+  "supercategory": "pill",
+  "product_id": "K-016551",
+  "class_index": 16,
+  "shape": "타원형",
+  "color": "하양",
+  "imprint_front": "DGTH"
+ },
+ {
+  "id": 16688,
+  "name": "오마코연질캡슐(오메가-3-산에틸에스테르90)",
+  "supercategory": "pill",
+  "product_id": "K-016688",
+  "class_index": 17,
+  "shape": "장방형",
+  "color": "노랑, 투명",
+  "imprint_front": "OMACOR"
+ },
+ {
+  "id": 18147,
+  "name": "리리카캡슐 150mg",
+  "supercategory": "pill",
+  "product_id": "K-018147",
+  "class_index": 18,
+  "shape": "장방형",
+  "color": "하양",
+  "imprint_front": "마크 PGN    150"
+ },
+ {
+  "id": 18357,
+  "name": "종근당글리아티린연질캡슐(콜린알포세레이트) ",
+  "supercategory": "pill",
+  "product_id": "K-018357",
+  "class_index": 19,
+  "shape": "타원형",
+  "color": "갈색",
+  "imprint_front": "GLT400"
+ },
+ {
+  "id": 19232,
+  "name": "콜리네이트연질캡슐 400mg",
+  "supercategory": "pill",
+  "product_id": "K-019232",
+  "class_index": 20,
+  "shape": "타원형",
+  "color": "갈색",
+  "imprint_front": "HM-CN"
+ },
+ {
+  "id": 19552,
+  "name": "트루비타정 60mg/병",
+  "supercategory": "pill",
+  "product_id": "K-019552",
+  "class_index": 21,
+  "shape": "타원형",
+  "color": "갈색",
+  "imprint_front": "YH"
+ },
+ {
+  "id": 19607,
+  "name": "스토가정 10mg",
+  "supercategory": "pill",
+  "product_id": "K-019607",
+  "class_index": 22,
+  "shape": "원형",
+  "color": "하양",
+  "imprint_front": "FZ12"
+ },
+ {
+  "id": 19861,
+  "name": "노바스크정 5mg",
+  "supercategory": "pill",
+  "product_id": "K-019861",
+  "class_index": 23,
+  "shape": "팔각형",
+  "color": "하양",
+  "imprint_front": "마크"
+ },
+ {
+  "id": 20014,
+  "name": "마도파정",
+  "supercategory": "pill",
+  "product_id": "K-020014",
+  "class_index": 24,
+  "shape": "원형",
+  "color": "분홍",
+  "imprint_front": "RO분할선C분할선HE분할선마크분할선"
+ },
+ {
+  "id": 20238,
+  "name": "플라빅스정 75mg",
+  "supercategory": "pill",
+  "product_id": "K-020238",
+  "class_index": 25,
+  "shape": "원형",
+  "color": "분홍",
+  "imprint_front": "75"
+ },
+ {
+  "id": 20877,
+  "name": "엑스포지정 5/160mg",
+  "supercategory": "pill",
+  "product_id": "K-020877",
+  "class_index": 26,
+  "shape": "타원형",
+  "color": "노랑",
+  "imprint_front": "NVR"
+ },
+ {
+  "id": 21325,
+  "name": "아토르바정 10mg",
+  "supercategory": "pill",
+  "product_id": "K-021325",
+  "class_index": 27,
+  "shape": "타원형",
+  "color": "하양",
+  "imprint_front": "YH"
+ },
+ {
+  "id": 21771,
+  "name": "라비에트정 20mg",
+  "supercategory": "pill",
+  "product_id": "K-021771",
+  "class_index": 28,
+  "shape": "원형",
+  "color": "노랑",
+  "imprint_front": "ID20"
+ },
+ {
+  "id": 22074,
+  "name": "리피로우정 20mg",
+  "supercategory": "pill",
+  "product_id": "K-022074",
+  "class_index": 29,
+  "shape": "원형",
+  "color": "하양",
+  "imprint_front": "LPL"
+ },
+ {
+  "id": 22347,
+  "name": "자누비아정 50mg",
+  "supercategory": "pill",
+  "product_id": "K-022347",
+  "class_index": 30,
+  "shape": "원형",
+  "color": "주황",
+  "imprint_front": "112"
+ },
+ {
+  "id": 22362,
+  "name": "맥시부펜이알정 300mg",
+  "supercategory": "pill",
+  "product_id": "K-022362",
+  "class_index": 31,
+  "shape": "장방형",
+  "color": "하양",
+  "imprint_front": "MX"
+ },
+ {
+  "id": 24850,
+  "name": "놀텍정 10mg",
+  "supercategory": "pill",
+  "product_id": "K-024850",
+  "class_index": 32,
+  "shape": "타원형",
+  "color": "주황",
+  "imprint_front": "Noltec 10"
+ },
+ {
+  "id": 25367,
+  "name": "자누메트정 50/850mg",
+  "supercategory": "pill",
+  "product_id": "K-025367",
+  "class_index": 33,
+  "shape": "타원형",
+  "color": "분홍",
+  "imprint_front": "515"
+ },
+ {
+  "id": 25438,
+  "name": "큐시드정 31.5mg/PTP",
+  "supercategory": "pill",
+  "product_id": "K-025438",
+  "class_index": 34,
+  "shape": "원형",
+  "color": "연두",
+  "imprint_front": "Q"
+ },
+ {
+  "id": 25469,
+  "name": "아모잘탄정 5/100mg",
+  "supercategory": "pill",
+  "product_id": "K-025469",
+  "class_index": 35,
+  "shape": "타원형",
+  "color": "분홍",
+  "imprint_front": "마크"
+ },
+ {
+  "id": 27733,
+  "name": "트윈스타정 40/5mg",
+  "supercategory": "pill",
+  "product_id": "K-027733",
+  "class_index": 36,
+  "shape": "타원형",
+  "color": "하양",
+  "imprint_front": "마크 A1"
+ },
+ {
+  "id": 27777,
+  "name": "카나브정 60mg",
+  "supercategory": "pill",
+  "product_id": "K-027777",
+  "class_index": 37,
+  "shape": "육각형",
+  "color": "노랑",
+  "imprint_front": "B분할선R"
+ },
+ {
+  "id": 27926,
+  "name": "울트라셋이알서방정",
+  "supercategory": "pill",
+  "product_id": "K-027926",
+  "class_index": 38,
+  "shape": "타원형",
+  "color": "노랑",
+  "imprint_front": "T/A ER"
+ },
+ {
+  "id": 27993,
+  "name": "졸로푸트정 100mg",
+  "supercategory": "pill",
+  "product_id": "K-027993",
+  "class_index": 39,
+  "shape": "장방형",
+  "color": "하양",
+  "imprint_front": "마크"
+ },
+ {
+  "id": 28763,
+  "name": "트라젠타정(리나글립틴)",
+  "supercategory": "pill",
+  "product_id": "K-028763",
+  "class_index": 40,
+  "shape": "원형",
+  "color": "분홍",
+  "imprint_front": "마크"
+ },
+ {
+  "id": 29345,
+  "name": "비모보정 500/20mg",
+  "supercategory": "pill",
+  "product_id": "K-029345",
+  "class_index": 41,
+  "shape": "타원형",
+  "color": "노랑",
+  "imprint_front": "500/20"
+ },
+ {
+  "id": 29451,
+  "name": "레일라정",
+  "supercategory": "pill",
+  "product_id": "K-029451",
+  "class_index": 42,
+  "shape": "타원형",
+  "color": "노랑",
+  "imprint_front": "LΛYLΛ"
+ },
+ {
+  "id": 29667,
+  "name": "리바로정 4mg",
+  "supercategory": "pill",
+  "product_id": "K-029667",
+  "class_index": 43,
+  "shape": "원형",
+  "color": "노랑",
+  "imprint_front": "마크203"
+ },
+ {
+  "id": 30308,
+  "name": "트라젠타듀오정 2.5/850mg",
+  "supercategory": "pill",
+  "product_id": "K-030308",
+  "class_index": 44,
+  "shape": "타원형",
+  "color": "주황",
+  "imprint_front": "마크"
+ },
+ {
+  "id": 31863,
+  "name": "아질렉트정(라사길린메실산염)",
+  "supercategory": "pill",
+  "product_id": "K-031863",
+  "class_index": 45,
+  "shape": "원형",
+  "color": "하양",
+  "imprint_front": "GIL 1"
+ },
+ {
+  "id": 31885,
+  "name": "자누메트엑스알서방정 100/1000mg",
+  "supercategory": "pill",
+  "product_id": "K-031885",
+  "class_index": 46,
+  "shape": "타원형",
+  "color": "파랑",
+  "imprint_front": "81"
+ },
+ {
+  "id": 32310,
+  "name": "글리아타민연질캡슐",
+  "supercategory": "pill",
+  "product_id": "K-032310",
+  "class_index": 47,
+  "shape": "타원형",
+  "color": "갈색",
+  "imprint_front": "글리아타민"
+ },
+ {
+  "id": 33009,
+  "name": "신바로정",
+  "supercategory": "pill",
+  "product_id": "K-033009",
+  "class_index": 48,
+  "shape": "타원형",
+  "color": "갈색",
+  "imprint_front": "S300"
+ },
+ {
+  "id": 33208,
+  "name": "에스원엠프정 20mg",
+  "supercategory": "pill",
+  "product_id": "K-033208",
+  "class_index": 49,
+  "shape": "원형",
+  "color": "분홍",
+  "imprint_front": "20S"
+ },
+ {
+  "id": 33880,
+  "name": "글리틴정(콜린알포세레이트)",
+  "supercategory": "pill",
+  "product_id": "K-033880",
+  "class_index": 50,
+  "shape": "타원형",
+  "color": "주황",
+  "imprint_front": ""
+ },
+ {
+  "id": 34597,
+  "name": "제미메트서방정 50/1000mg",
+  "supercategory": "pill",
+  "product_id": "K-034597",
+  "class_index": 51,
+  "shape": "장방형",
+  "color": "분홍",
+  "imprint_front": "마크"
+ },
+ {
+  "id": 35206,
+  "name": "아토젯정 10/40mg",
+  "supercategory": "pill",
+  "product_id": "K-035206",
+  "class_index": 52,
+  "shape": "타원형",
+  "color": "하양",
+  "imprint_front": "337"
+ },
+ {
+  "id": 36637,
+  "name": "로수젯정10/5밀리그램",
+  "supercategory": "pill",
+  "product_id": "K-036637",
+  "class_index": 53,
+  "shape": "타원형",
+  "color": "노랑",
+  "imprint_front": "R5"
+ },
+ {
+  "id": 38162,
+  "name": "로수바미브정 10/20mg",
+  "supercategory": "pill",
+  "product_id": "K-038162",
+  "class_index": 54,
+  "shape": "타원형",
+  "color": "분홍",
+  "imprint_front": "RE20"
+ },
+ {
+  "id": 41768,
+  "name": "카발린캡슐 25mg",
+  "supercategory": "pill",
+  "product_id": "K-041768",
+  "class_index": 55,
+  "shape": "장방형",
+  "color": "노랑",
+  "imprint_front": "CJ PGN   25"
+ }
+]
